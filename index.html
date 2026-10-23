@@ -751,7 +751,7 @@ function teamView() {
   ${users.map(u => `<tr><td class="cell-main">${esc(u.name)}${u.id === S.me.id ? ' <span class="muted">(you)</span>' : ""}</td><td>${esc(u.email)}</td>
     <td>${u.role === "admin" ? "Administrator" : "Team user"}</td><td>${u.active === false ? '<span class="chip off">Disabled</span>' : '<span class="chip done">Active</span>'}</td>
     <td>${fmtDate(u.createdAt)}</td>
-    <td><div class="btn-row" style="justify-content:flex-end"><button class="btn sm" data-act="editUser" data-id="${u.id}">Edit</button><button class="btn sm" data-act="resetPw" data-id="${u.id}">Send password reset</button></div></td></tr>`).join("")}
+    <td><div class="btn-row" style="justify-content:flex-end"><button class="btn sm" data-act="editUser" data-id="${u.id}">Edit</button><button class="btn sm" data-act="resetPw" data-id="${u.id}" title="Emails a link to set a new password. Use it to resend an invite or when someone forgets their password.">Send invite / reset</button></div></td></tr>`).join("")}
   </tbody></table></div></section>${mine}`;
 }
 
@@ -837,11 +837,28 @@ function userForm(u) {
     ${u.id ? `<div class="field"><span>Email address</span><div class="locked" style="font-family:var(--f-body)">${esc(u.email)}</div></div>` : `<label class="field"><span>Email address</span><input id="uf-email" name="email" type="email" required></label>`}
     <label class="field"><span>Role</span><select id="uf-role" name="role"><option value="user" ${u.role !== "admin" ? "selected" : ""}>Team user</option><option value="admin" ${u.role === "admin" ? "selected" : ""}>Administrator</option></select></label>
     ${u.id ? `<label class="field full" style="display:flex;gap:8px;align-items:center"><input id="uf-act" name="active" type="checkbox" ${u.active !== false ? "checked" : ""} ${u.id === S.me.id ? "disabled" : ""}> Can sign in</label>`
-      : `<label class="field"><span>Starting password</span><input id="uf-pw" name="pw" type="password" required minlength="8" autocomplete="new-password"><small>At least 8 characters. They can change it under My account.</small></label>
-         <label class="field"><span>Confirm password</span><input id="uf-pw2" name="pw2" type="password" required autocomplete="new-password"></label>`}
+      : `<div class="field full"><span>How will they get their password?</span>
+           <div class="pick"><label><input type="radio" name="pwmode" value="invite" checked data-pwmode> Email them an invite</label><label><input type="radio" name="pwmode" value="set" data-pwmode> I'll set a password</label></div>
+           <small id="uf-mode-note">They get an email with a link to choose their own password.</small></div>
+         <label class="field" data-pwfield hidden><span>Starting password</span><input id="uf-pw" name="pw" type="password" required minlength="8" autocomplete="new-password" disabled><small>At least 8 characters. They can change it under My account.</small></label>
+         <label class="field" data-pwfield hidden><span>Confirm password</span><input id="uf-pw2" name="pw2" type="password" required autocomplete="new-password" disabled></label>`}
     <p class="note full" style="margin:0">Administrators can add and disable users, correct amounts and delete records. Team users capture customers, handovers, documents and payments.</p>
   </div><div class="err"></div></div>
-  <div class="modal-foot"><button class="btn" type="button" data-act="closeModal">Cancel</button><button class="btn primary" type="submit">${u.id ? "Save" : "Add user"}</button></div></form>`;
+  <div class="modal-foot"><button class="btn" type="button" data-act="closeModal">Cancel</button><button class="btn primary" type="submit" id="uf-submit">${u.id ? "Save" : "Add and send invite"}</button></div></form>`;
+}
+function appUrl() { return location.origin + location.pathname.replace(/index\.html$/, ""); }
+function inviteText(name, email) {
+  return `Hi ${name.split(" ")[0]}, you've been added to Corcomm Blacklist.\n\n1. Check your email (${email}) for a message about setting your password, and click the link in it. If it's not in your inbox, look in Spam/Junk.\n2. Choose your password.\n3. Sign in at ${appUrl()} with ${email} and your new password.`;
+}
+async function sendInvite(email) {
+  try { await sendPasswordResetEmail(auth, email, { url: appUrl() }); }
+  catch (e) { if (String(e?.code).includes("unauthorized-continue-uri") || String(e?.code).includes("invalid-continue-uri")) await sendPasswordResetEmail(auth, email); else throw e; }
+}
+function inviteSentModal(name, email, sent) {
+  openModal(sent ? "Invite sent" : "User added", `<div class="modal-body">
+    <p style="margin:0">${sent ? `An invite email went to <b>${esc(email)}</b>. It comes from Firebase (noreply@…firebaseapp.com) and can land in Spam.` : `<b>${esc(name)}</b> can now sign in with <b>${esc(email)}</b> and the password you set.`}</p>
+    <label class="field"><span>${sent ? "Also send this on WhatsApp or SMS" : "Message to send them"}</span><textarea id="inv-text" rows="7" readonly>${esc(sent ? inviteText(name, email) : `Hi ${name.split(" ")[0]}, you've been added to Corcomm Blacklist. Sign in at ${appUrl()} with ${email}. I'll give you your starting password separately; change it under My account after you sign in.`)}</textarea></label>
+  </div><div class="modal-foot"><button class="btn" data-act="copyInvite">Copy message</button><button class="btn primary" data-act="closeModal">Done</button></div>`);
 }
 function confirmBox(text, label, act, attrs) {
   return `<div class="modal-body"><p style="margin:0">${text}</p><div class="err"></div></div>
@@ -1100,8 +1117,15 @@ const ACT = {
   editUser(el) { openModal("Edit team user", userForm(S.users.find(u => u.id === el.dataset.id))); },
   async resetPw(el) {
     const u = S.users.find(x => x.id === el.dataset.id);
-    try { await sendPasswordResetEmail(auth, u.email); await log("user.reset", `Sent a password reset email to ${u.name}`); toast(`Reset link emailed to ${u.email}`); }
-    catch (e) { toast(authErr(e), "bad"); }
+    el.disabled = true;
+    try { await sendInvite(u.email); await log("user.reset", `Emailed a set-password link to ${u.name}`); inviteSentModal(u.name, u.email, true); }
+    catch (e) { el.disabled = false; toast(authErr(e), "bad"); }
+  },
+  copyInvite(el) {
+    const ta = document.getElementById("inv-text"); if (!ta) return;
+    const done = () => { el.textContent = "Copied"; setTimeout(() => { el.textContent = "Copy message"; }, 2000); };
+    const fallback = () => { ta.select(); try { document.execCommand("copy"); done(); } catch { toast("Select the message and copy it with Ctrl + C.", "bad"); } };
+    if (navigator.clipboard?.writeText) navigator.clipboard.writeText(ta.value).then(done, fallback); else fallback();
   },
 };
 
@@ -1216,17 +1240,27 @@ const FORM = {
         await log("user.update", `Updated team user ${name} (${role === "admin" ? "administrator" : "team user"}${active ? "" : ", disabled"})`);
         closeModal(); toast("User saved");
       } else {
-        const email = val(f, "email"), pw = E.pw.value;
-        if (pw.length < 8) { busy(f, false); return formErr(f, "Use at least 8 characters for the password."); }
-        if (pw !== E.pw2.value) { busy(f, false); return formErr(f, "The two passwords don't match."); }
+        const email = val(f, "email"), invite = E.pwmode.value === "invite";
+        let pw = E.pw.value;
+        if (!invite) {
+          if (pw.length < 8) { busy(f, false); return formErr(f, "Use at least 8 characters for the password."); }
+          if (pw !== E.pw2.value) { busy(f, false); return formErr(f, "The two passwords don't match."); }
+        } else pw = Array.from(crypto.getRandomValues(new Uint8Array(24)), b => "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!#%"[b % 60]).join("");
         if (S.users.some(u => (u.email || "").toLowerCase() === email.toLowerCase())) { busy(f, false); return formErr(f, "That email address is already on the team list."); }
         secondary ||= initializeApp(CFG, "user-admin");
         const sa = getAuth(secondary);
         const cred = await createUserWithEmailAndPassword(sa, email, pw);
         await signOut(sa);
         await setDoc(doc(db, "users", cred.user.uid), { name, email, role, active: true, createdAt: serverTimestamp(), createdBy: S.me.id });
-        await log("user.create", `Added team user ${name} (${role === "admin" ? "administrator" : "team user"})`);
-        closeModal(); toast("User added. Give them their email and starting password.");
+        let sent = false;
+        if (invite) {
+          try { await sendInvite(email); sent = true; }
+          catch (e) { console.error(e); }
+        }
+        await log("user.create", `Added team user ${name} (${role === "admin" ? "administrator" : "team user"})${sent ? ", invite emailed" : ""}`);
+        closeModal();
+        if (invite && !sent) { toast(`${name} was added, but the invite email couldn't be sent. Use "Send invite" on the Team page to try again.`, "bad"); return; }
+        inviteSentModal(name, email, sent);
       }
     } catch (e) { busy(f, false); formErr(f, e?.code?.startsWith("auth/") ? authErr(e) : writeFailed(e)); }
   },
@@ -1251,6 +1285,13 @@ document.addEventListener("keydown", e => { if (e.key === "Escape" && document.g
 document.addEventListener("input", e => { const k = e.target.dataset.input; if (k) { S[k] = e.target.value; render(); } });
 document.addEventListener("change", async e => {
   const t = e.target;
+  if ("pwmode" in t.dataset) {
+    const f = t.form, set = t.value === "set";
+    f.querySelectorAll("[data-pwfield]").forEach(l => { l.hidden = !set; l.querySelector("input").disabled = !set; });
+    f.querySelector("#uf-mode-note").textContent = set ? "Give them the password yourself. They can change it under My account." : "They get an email with a link to choose their own password.";
+    f.querySelector("#uf-submit").textContent = set ? "Add user" : "Add and send invite";
+    return;
+  }
   if (t.dataset.impgrp) { if (IMP && !IMP.busy) { IMP.map[t.dataset.impgrp] = t.value; refreshImport(); } return; }
   if ("importFile" in t.dataset) {
     const file = t.files[0]; if (!file) return;

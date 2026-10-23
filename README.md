@@ -88,7 +88,13 @@ In Firebase: **Authentication → Settings → Authorized domains → Add domain
 Open the GitHub Pages address. The first screen asks you to **set up the first administrator**. Enter your name, email and a password. This screen appears only once.
 
 ### 11. Add the team
-Go to **Team → Add team user**. Enter each person's name, email address, role and a starting password, and give them the address and their starting password. They can change their password under **My account**. Anyone can use **Forgot your password?** on the sign-in screen to get a reset link by email.
+Go to **Team → Add team user** and enter the person's name, email address and role.
+- **Email them an invite** (the default): they receive an email with a link to choose their own password. You also get a ready-to-copy message with the site address to send on WhatsApp.
+- **I'll set a password**: you choose a starting password and give it to them yourself.
+
+If an invite gets lost or someone forgets their password, click **Send invite / reset** next to their name on the Team page. Anyone can also use **Forgot your password?** on the sign-in screen.
+
+Optional: to make the invite email look like Corcomm's, go to Firebase → **Authentication → Templates → Password reset**. Click the pencil, set the **Sender name** to `Corcomm Blacklist` and the subject to `Set your Corcomm Blacklist password`, then save.
 
 To stop someone's access, open **Team → Edit** and untick **Can sign in**. To delete a login completely, use Firebase → **Authentication → Users**.
 
