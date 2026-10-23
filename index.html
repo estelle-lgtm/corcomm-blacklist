@@ -538,8 +538,11 @@ function customersView() {
   if (S.custFilter === "open") list = list.filter(c => m.custStats[c.id].balance > 0.004 || m.custStats[c.id].open > 0 || m.custStats[c.id].count === 0);
   if (S.custFilter === "settled") list = list.filter(c => m.custStats[c.id].count > 0 && m.custStats[c.id].open === 0);
   list.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+  const total = list.length, MAXROWS = 300;
+  if (list.length > MAXROWS) list = list.slice(0, MAXROWS);
   return `
-  <div class="page-head"><div><h1>Customers</h1><p class="muted">${list.length} shown</p></div><button class="btn primary" data-act="newCustomer">Add customer</button></div>
+  <div class="page-head"><div><h1>Customers</h1><p class="muted">${total > MAXROWS ? `Showing ${MAXROWS} of ${total}. Search to find the rest.` : `${total} shown`}</p></div>
+    <div class="btn-row">${isAdmin() ? '<button class="btn" data-act="importCustomers">Import customers</button>' : ""}<button class="btn primary" data-act="newCustomer">Add customer</button></div></div>
   <div class="toolbar">
     <label class="field" style="flex:1 1 260px"><span>Search</span><input id="cust-q" type="search" placeholder="Name, account no, ID / reg no" value="${esc(S.q)}" data-input="q"></label>
     <div class="seg" role="group" aria-label="Status filter" style="margin:0">${[["open", "Open"], ["settled", "Settled"], ["all", "All"]].map(([k, l]) => `<button data-act="custFilter" data-v="${k}" aria-pressed="${S.custFilter === k}">${l}</button>`).join("")}</div>
@@ -845,6 +848,109 @@ function confirmBox(text, label, act, attrs) {
   <div class="modal-foot"><button class="btn" type="button" data-act="closeModal">Cancel</button><button class="btn danger" data-act="${act}" ${attrs}>${label}</button></div>`;
 }
 
+/* ---------- customer import (CSV) ---------- */
+const IMP_GROUPS = [
+  { key: "ELE", label: "ELE… account codes", def: "CE" },
+  { key: "SEK", label: "SEK… account codes", def: "CS" },
+  { key: "SIG", label: "SIG… account codes", def: "" },
+  { key: "OTHER", label: "Other account codes", def: "" },
+];
+let IMP = null;
+function impGroup(acc) {
+  const a = acc.toUpperCase();
+  if (a.startsWith("ELE")) return "ELE";
+  if (a.startsWith("SEK")) return "SEK";
+  if (a.startsWith("SIG") || a.startsWith("SSIG")) return "SIG";
+  return "OTHER";
+}
+function parseCSV(text) {
+  const rows = []; let row = [], f = "", q = false;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i];
+    if (q) { if (c === '"') { if (text[i + 1] === '"') { f += '"'; i++; } else q = false; } else f += c; }
+    else if (c === '"') q = true;
+    else if (c === ",") { row.push(f); f = ""; }
+    else if (c === "\n") { row.push(f); rows.push(row); row = []; f = ""; }
+    else if (c !== "\r") f += c;
+  }
+  if (f || row.length) { row.push(f); rows.push(row); }
+  return rows.filter(r => r.some(c => c.trim()));
+}
+function decodeText(buf) {
+  try { return new TextDecoder("utf-8", { fatal: true }).decode(buf).replace(/^﻿/, ""); }
+  catch { return new TextDecoder("windows-1252").decode(buf); }
+}
+function normPhone(p) {
+  p = (p || "").replace(/\s+/g, " ").trim(); if (!p) return "";
+  const d = p.replace(/[\s-]/g, "");
+  const n = /^\d{9}$/.test(d) ? "0" + d : /^0\d{9}$/.test(d) ? d : null;
+  return n ? `${n.slice(0, 3)} ${n.slice(3, 6)} ${n.slice(6)}` : p;
+}
+function readCustomerCSV(text) {
+  const rows = parseCSV(text);
+  if (rows.length < 2) throw new Error("The file has no customer rows.");
+  const h = rows[0].map(x => x.trim().toLowerCase());
+  const find = re => h.findIndex(x => re.test(x));
+  const iAcc = find(/^(account( number| no\.?)?|acc(ount)? ?no\.?|code)$/), iName = find(/^(description|name|customer( name)?)$/), iTel = find(/^(telephone|tel|phone|cell( ?phone)?)$/);
+  const iAddr = h.map((x, i) => /^address/.test(x) ? i : -1).filter(i => i >= 0);
+  if (iAcc < 0 || iName < 0) throw new Error("The file needs an \"Account Number\" and a \"Description\" (or \"Name\") column.");
+  return rows.slice(1).map(r => ({
+    accountNo: (r[iAcc] || "").trim(),
+    name: (r[iName] || "").replace(/\s+/g, " ").trim(),
+    address: iAddr.map(i => (r[i] || "").replace(/\s+/g, " ").trim()).filter(Boolean).join(", "),
+    phone: iTel >= 0 ? normPhone(r[iTel]) : "",
+  })).filter(x => x.name || x.accountNo);
+}
+function importBody() {
+  if (!IMP) return `<div class="modal-body">
+      <p style="margin:0">Choose a CSV file with an <b>Account Number</b> and <b>Description</b> column, such as a customer list exported from Sage. Address and telephone columns are picked up too.</p>
+      <label class="field"><span>Customer file (.csv)</span><input id="imp-file" type="file" accept=".csv,text/csv" data-import-file></label>
+      <div class="err"></div></div>
+    <div class="modal-foot"><button class="btn" type="button" data-act="closeModal">Cancel</button></div>`;
+  const existing = new Set(S.customers.map(c => (c.accountNo || "").trim().toUpperCase()).filter(Boolean));
+  const fresh = IMP.rows.filter(r => !r.accountNo || !existing.has(r.accountNo.toUpperCase()));
+  const skipped = IMP.rows.length - fresh.length;
+  const groups = IMP_GROUPS.map(g => ({ ...g, rows: fresh.filter(r => impGroup(r.accountNo) === g.key) })).filter(g => g.rows.length);
+  const ready = groups.every(g => IMP.map[g.key]);
+  const count = groups.reduce((a, g) => a + (IMP.map[g.key] && IMP.map[g.key] !== "SKIP" ? g.rows.length : 0), 0);
+  return `<div class="modal-body">
+    <p style="margin:0"><b>${esc(IMP.fileName)}</b>: ${IMP.rows.length} customers in the file${skipped ? `, ${skipped} already in the app (skipped)` : ""}.</p>
+    ${groups.length ? `<p class="note" style="margin:0">Choose which company each group belongs to. You can change a single customer afterwards under Edit details.</p>
+    <div class="tbl-wrap"><table><thead><tr><th>Group</th><th class="r">Customers</th><th>Examples</th><th>Company</th></tr></thead><tbody>
+    ${groups.map(g => `<tr><td class="cell-main" style="white-space:nowrap">${esc(g.label)}</td><td class="r num">${g.rows.length}</td>
+      <td class="cell-sub">${g.rows.slice(0, 3).map(r => esc(`${r.accountNo} ${r.name}`)).join("<br>")}</td>
+      <td><select id="imp-g-${g.key}" data-impgrp="${g.key}" style="min-width:150px"><option value="">Choose…</option>
+        <option value="CE" ${IMP.map[g.key] === "CE" ? "selected" : ""}>Elektronies</option><option value="CS" ${IMP.map[g.key] === "CS" ? "selected" : ""}>Sekuriteit</option><option value="SKIP" ${IMP.map[g.key] === "SKIP" ? "selected" : ""}>Don't import</option></select></td></tr>`).join("")}
+    </tbody></table></div>` : `<div class="banner">Every customer in this file is already in the app. Nothing to import.</div>`}
+    <div class="err">${esc(IMP.msg || "")}</div></div>
+  <div class="modal-foot"><button class="btn" type="button" data-act="closeModal" ${IMP.busy ? "disabled" : ""}>Cancel</button>
+    <button class="btn primary" data-act="doImport" ${ready && count && !IMP.busy ? "" : "disabled"}>${IMP.busy ? "Importing…" : `Import ${count} customer${count === 1 ? "" : "s"}`}</button></div>`;
+}
+function refreshImport() { const m = document.querySelector("#modal-root .modal"); if (!m) return; m.querySelectorAll(".modal-body,.modal-foot").forEach(n => n.remove()); m.insertAdjacentHTML("beforeend", importBody()); }
+async function runImport() {
+  const existing = new Set(S.customers.map(c => (c.accountNo || "").trim().toUpperCase()).filter(Boolean));
+  const todo = IMP.rows.filter(r => (!r.accountNo || !existing.has(r.accountNo.toUpperCase())) && IMP.map[impGroup(r.accountNo)] && IMP.map[impGroup(r.accountNo)] !== "SKIP");
+  IMP.busy = true; IMP.msg = ""; refreshImport();
+  let done = 0;
+  try {
+    for (let i = 0; i < todo.length; i += 400) {
+      const b = writeBatch(db);
+      todo.slice(i, i + 400).forEach(r => b.set(doc(collection(db, "customers")), {
+        name: r.name || r.accountNo, entity: IMP.map[impGroup(r.accountNo)], accountNo: r.accountNo, regNo: "", contactPerson: "", phone: r.phone, email: "", address: r.address, notes: "",
+        createdAt: serverTimestamp(), createdBy: S.me.id, createdByName: S.me.name, importedFrom: IMP.fileName,
+      }));
+      await b.commit(); done += Math.min(400, todo.length - i);
+      IMP.msg = `Imported ${done} of ${todo.length}…`; refreshImport();
+    }
+    const ce = todo.filter(r => IMP.map[impGroup(r.accountNo)] === "CE").length, cs = todo.length - ce;
+    await log("customer.import", `Imported ${todo.length} customers from ${IMP.fileName} (${ce} Elektronies, ${cs} Sekuriteit)`);
+    closeModal(); IMP = null; S.view = "customers"; S.custFilter = "all"; render();
+    toast(`Imported ${todo.length} customers`);
+  } catch (e) {
+    IMP.busy = false; IMP.msg = (done ? `${done} customers were imported before the error. Choose the file again to import the rest; those already in the app are skipped. ` : "") + writeFailed(e); refreshImport();
+  }
+}
+
 /* ---------- exports ---------- */
 function saveFile(filename, blob) {
   const a = document.createElement("a");
@@ -988,6 +1094,8 @@ const ACT = {
   },
   exportPdf() { try { exportPdf(); } catch (e) { console.error(e); toast("The PDF couldn't be built.", "bad"); } },
   exportXlsx() { try { exportXlsx(); } catch (e) { console.error(e); toast("The Excel file couldn't be built.", "bad"); } },
+  importCustomers() { IMP = null; openModal("Import customers", importBody()); },
+  doImport() { if (IMP && !IMP.busy) runImport(); },
   newUser() { openModal("Add team user", userForm()); },
   editUser(el) { openModal("Edit team user", userForm(S.users.find(u => u.id === el.dataset.id))); },
   async resetPw(el) {
@@ -1143,6 +1251,16 @@ document.addEventListener("keydown", e => { if (e.key === "Escape" && document.g
 document.addEventListener("input", e => { const k = e.target.dataset.input; if (k) { S[k] = e.target.value; render(); } });
 document.addEventListener("change", async e => {
   const t = e.target;
+  if (t.dataset.impgrp) { if (IMP && !IMP.busy) { IMP.map[t.dataset.impgrp] = t.value; refreshImport(); } return; }
+  if ("importFile" in t.dataset) {
+    const file = t.files[0]; if (!file) return;
+    try {
+      const rows = readCustomerCSV(decodeText(await file.arrayBuffer()));
+      IMP = { fileName: file.name, rows, map: Object.fromEntries(IMP_GROUPS.map(g => [g.key, g.def])), busy: false, msg: "" };
+      refreshImport();
+    } catch (err) { const m = t.closest(".modal"); m && formErr(m, err.message || "That file couldn't be read. Save it as CSV and try again."); }
+    return;
+  }
   if (t.dataset.rep) { S.rep[t.dataset.rep] = t.type === "checkbox" ? t.checked : t.value; if (S.rep.from > S.rep.to) S.rep.to = S.rep.from; render(); return; }
   if (t.dataset.upload) {
     const tx = model().txById[t.dataset.upload], files = [...t.files]; if (!files.length) return;
