@@ -1,0 +1,1216 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>Corcomm Blacklist</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect x='2' y='2' width='28' height='28' rx='5' fill='%237A1F2B'/%3E%3Ctext x='16' y='22' font-family='Arial' font-weight='700' font-size='15' fill='white' text-anchor='middle'%3EBL%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+html{color-scheme:light;-webkit-text-size-adjust:100%}
+body{margin:0}
+img{max-width:100%}
+[hidden]{display:none!important}
+/* Layout: sticky ledger header (wordmark · tabs · entity switch), one working column below; tables are the main surface. */
+:root{
+  --bg:#F2F4F6; --surface:#FFFFFF; --surface-2:#E9EDF1; --ink:#14202B; --muted:#5A6774; --line:#D3DAE1;
+  --accent:#7A1F2B; --accent-ink:#FFFFFF; --accent-soft:#F4E4E6;
+  --ce:#1B6A88; --ce-soft:#E1EFF5; --cs:#9A5F0E; --cs-soft:#F6ECDC;
+  --good:#2C7A4C; --good-soft:#E2F2E8; --warn:#B4531A; --warn-soft:#FBEADF; --bad:#B42318;
+  --scrim:rgba(14,22,30,.45); --shadow:0 10px 30px rgba(14,22,30,.14);
+  --f-display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+  --f-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0E141A; --surface:#151D25; --surface-2:#1D2731; --ink:#E4E9EE; --muted:#93A0AD; --line:#2A3540;
+  --accent:#E07280; --accent-ink:#1B0C0F; --accent-soft:#3A1E23;
+  --ce:#62B6D8; --ce-soft:#16303B; --cs:#E2A852; --cs-soft:#372A16;
+  --good:#63C690; --good-soft:#173123; --warn:#F2945A; --warn-soft:#3A2416; --bad:#F2766C;
+  --scrim:rgba(0,0,0,.6); --shadow:0 10px 30px rgba(0,0,0,.5); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0E141A; --surface:#151D25; --surface-2:#1D2731; --ink:#E4E9EE; --muted:#93A0AD; --line:#2A3540;
+  --accent:#E07280; --accent-ink:#1B0C0F; --accent-soft:#3A1E23;
+  --ce:#62B6D8; --ce-soft:#16303B; --cs:#E2A852; --cs-soft:#372A16;
+  --good:#63C690; --good-soft:#173123; --warn:#F2945A; --warn-soft:#3A2416; --bad:#F2766C;
+  --scrim:rgba(0,0,0,.6); --shadow:0 10px 30px rgba(0,0,0,.5); color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.5}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:30;background:var(--surface)}
+.wrap{max-width:1240px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1,h2,h3{font-family:var(--f-display);font-weight:700;letter-spacing:.01em;text-wrap:balance;margin:0;line-height:1.1}
+h1{font-size:30px} h2{font-size:22px} h3{font-size:18px}
+.num,.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
+a{color:var(--accent)}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* Header */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--surface);border-bottom:1px solid var(--line)}
+.top-row{display:flex;align-items:center;gap:16px;flex-wrap:wrap;padding-block:10px}
+.mark{display:flex;align-items:center;gap:10px;margin-right:auto}
+.stamp{font-family:var(--f-display);font-weight:700;font-size:13px;letter-spacing:.14em;color:var(--accent);border:2px solid var(--accent);padding:2px 7px;border-radius:3px;transform:rotate(-3deg)}
+.mark-name{font-family:var(--f-display);font-weight:700;font-size:22px;letter-spacing:.02em}
+.mark-name span{color:var(--muted);font-weight:600}
+.who{display:flex;align-items:center;gap:10px;font-size:13px}
+.tabs-row{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none}
+.tab{background:none;border:0;padding:10px 14px;border-bottom:3px solid transparent;cursor:pointer;color:var(--muted);font-weight:500;white-space:nowrap}
+.tab[aria-current="page"]{color:var(--ink);border-bottom-color:var(--accent);font-weight:600}
+.tab:hover{color:var(--ink)}
+.seg{display:inline-flex;background:var(--surface-2);border-radius:8px;padding:3px;gap:2px;margin-bottom:6px}
+.seg button{border:0;background:none;padding:5px 12px;border-radius:6px;cursor:pointer;color:var(--muted);font-size:13px;font-weight:500;display:inline-flex;align-items:center;gap:6px}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+
+main{padding-block:24px 64px;display:grid;gap:20px}
+.page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.page-head p{margin:4px 0 0}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;gap:6px;border-radius:6px;padding:8px 14px;font-weight:600;font-size:13.5px;cursor:pointer;border:1px solid var(--line);background:var(--surface);color:var(--ink);white-space:nowrap}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.ghost{background:none;border-color:transparent;color:var(--muted);padding:6px 8px}
+.btn.ghost:hover{color:var(--ink);background:var(--surface-2)}
+.btn.danger{color:var(--bad);border-color:var(--bad);background:none}
+.btn.sm{padding:5px 10px;font-size:12.5px}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+
+/* Surfaces */
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px}
+.panel-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:14px 16px;border-bottom:1px solid var(--line);flex-wrap:wrap}
+.panel-body{padding:16px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:20px}
+.grid2>*{min-width:0}
+
+/* Entity marks */
+.ent{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:2px 8px;border-radius:999px;white-space:nowrap}
+.ent::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.ent.CE{color:var(--ce);background:var(--ce-soft)} .ent.CS{color:var(--cs);background:var(--cs-soft)}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.dot.CE{background:var(--ce)} .dot.CS{background:var(--cs)}
+
+/* Status chips */
+.chip{display:inline-block;font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:4px;background:var(--surface-2);color:var(--muted);white-space:nowrap}
+.chip.open{background:var(--warn-soft);color:var(--warn)}
+.chip.done{background:var(--good-soft);color:var(--good)}
+.chip.off{background:var(--surface-2);color:var(--muted);text-decoration:line-through}
+.chip.lock{background:none;padding:0;color:var(--muted);font-weight:500}
+
+/* Entity scorecards */
+.score{padding:18px;display:grid;gap:14px}
+.score-head{display:flex;align-items:center;gap:10px;justify-content:space-between}
+.score-head h3{display:flex;align-items:center;gap:8px}
+.figs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.fig .v{font-family:var(--f-mono);font-size:17px;font-weight:500;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fig .v.big{font-size:20px}
+@media (max-width:520px){.figs{grid-template-columns:1fr 1fr}}
+.bar{height:8px;background:var(--surface-2);border-radius:999px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--good);border-radius:999px}
+.bar.CE i{background:var(--ce)} .bar.CS i{background:var(--cs)}
+.bar-row{display:flex;align-items:center;gap:10px;font-size:12.5px}
+.bar-row .bar{flex:1}
+.mini-bar{width:70px;height:6px}
+
+/* Tables */
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:600;text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);white-space:nowrap;background:var(--surface)}
+td{padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+tbody tr:last-child td{border-bottom:0}
+td.r,th.r{text-align:right}
+td.num{white-space:nowrap}
+tr.click{cursor:pointer}
+tr.click:hover td{background:var(--surface-2)}
+tfoot td{font-weight:600;border-top:2px solid var(--line);border-bottom:0}
+.cell-main{font-weight:600}
+.cell-sub{font-size:12px;color:var(--muted)}
+.neg{color:var(--good)}
+
+/* Toolbars & forms */
+.toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.field{display:grid;gap:5px;min-width:0}
+.field>span{font-size:12.5px;font-weight:600}
+.field small{color:var(--muted);font-size:12px}
+input[type=text],input[type=password],input[type=number],input[type=date],input[type=email],input[type=search],select,textarea{width:100%;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:8px 10px;min-height:38px}
+textarea{min-height:70px;resize:vertical}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);outline:none;box-shadow:0 0 0 3px var(--accent-soft)}
+.form-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.form-grid .full{grid-column:1/-1}
+@media (max-width:560px){.form-grid{grid-template-columns:1fr}}
+.locked{display:flex;align-items:center;gap:8px;background:var(--surface-2);border:1px dashed var(--line);border-radius:6px;padding:8px 10px;min-height:38px;font-family:var(--f-mono);font-size:13px}
+.locked svg{flex:none;color:var(--muted)}
+.pick{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.pick label{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:8px;padding:10px 12px;cursor:pointer;font-weight:600}
+.pick input{accent-color:var(--accent)}
+.pick label:has(input:checked){border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.err{color:var(--bad);font-size:13px;min-height:1em}
+.note{font-size:12.5px;color:var(--muted)}
+
+/* Matter cards */
+.matter{border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+.matter-head{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:14px 16px;border-bottom:1px solid var(--line)}
+.matter-head .ref{font-weight:600;font-size:15px}
+.kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px 18px;padding:14px 16px}
+.kv div{min-width:0}
+.kv .v{font-size:13.5px;overflow-wrap:anywhere}
+.docs{padding:0 16px 14px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.doc{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);border-radius:6px;padding:4px 8px;font-size:12.5px;max-width:100%;background:var(--surface-2)}
+.doc a{color:var(--ink);text-decoration:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:240px}
+.doc a:hover{text-decoration:underline}
+.doc button{border:0;background:none;color:var(--muted);cursor:pointer;padding:0 2px;font-size:14px;line-height:1}
+
+/* Customer header */
+.cust-head{display:grid;gap:14px;padding:18px}
+.cust-meta{display:flex;flex-wrap:wrap;gap:6px 22px;font-size:13px}
+.cust-meta b{font-weight:500;color:var(--muted);margin-right:4px}
+
+/* Lists */
+.feed{display:grid}
+.feed-item{display:grid;grid-template-columns:auto 1fr auto;gap:12px;padding:10px 16px;border-bottom:1px solid var(--line);align-items:start}
+.feed-item:last-child{border-bottom:0}
+.feed-item .t{font-size:13.5px}
+.feed-item .s{font-size:12px;color:var(--muted)}
+.ic{width:28px;height:28px;border-radius:6px;display:grid;place-items:center;font-size:13px;font-weight:700;font-family:var(--f-mono)}
+.ic.in{background:var(--accent-soft);color:var(--accent)}
+.ic.pay{background:var(--good-soft);color:var(--good)}
+.empty{padding:40px 20px;text-align:center;display:grid;gap:10px;justify-items:center}
+.empty p{margin:0;max-width:46ch;color:var(--muted)}
+
+/* Auth */
+.auth{min-height:100vh;display:grid;place-items:center;padding-block:40px}
+.auth-card{width:min(420px,100%);background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:28px;display:grid;gap:18px;box-shadow:var(--shadow)}
+.auth-card .mark{margin:0}
+.auth-card form{display:grid;gap:14px}
+
+/* Modal */
+.scrim{position:fixed;inset:0;background:var(--scrim);z-index:50;display:grid;place-items:start center;overflow-y:auto;padding:max(24px,env(safe-area-inset-top,0px)) max(12px,env(safe-area-inset-right,0px)) max(24px,env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px))}
+.modal{width:min(640px,100%);background:var(--surface);border-radius:12px;box-shadow:var(--shadow);display:grid}
+.modal-head{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:16px 20px;border-bottom:1px solid var(--line)}
+.modal-body{padding:20px;display:grid;gap:14px}
+.modal-foot{display:flex;justify-content:flex-end;gap:8px;padding:14px 20px;border-top:1px solid var(--line);flex-wrap:wrap}
+
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;z-index:60;font-size:13.5px;box-shadow:var(--shadow);max-width:calc(100% - 32px)}
+.toast.bad{background:var(--bad);color:#fff}
+.banner{background:var(--warn-soft);color:var(--warn);border-radius:8px;padding:10px 14px;font-size:13.5px}
+.spin{width:22px;height:22px;border:3px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:sp 0.8s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.spin{animation:none}}
+.section-title{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.hide-sm{} @media (max-width:640px){.hide-sm{display:none}}
+
+.linkbtn{background:none;border:0;padding:0;color:var(--ink);cursor:pointer;text-align:left;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:240px;font-size:12.5px}
+.linkbtn:hover{text-decoration:underline}
+</style>
+</head>
+<body>
+<div id="app"><div class="auth"><div class="spin" aria-label="Loading"></div></div></div>
+<div id="modal-root"></div>
+<div id="toast-root"></div>
+
+<script src="firebase-config.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getAuth, setPersistence, browserSessionPersistence, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, sendPasswordResetEmail, updatePassword, reauthenticateWithCredential, EmailAuthProvider } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, collection, doc, setDoc, updateDoc, deleteDoc, getDoc, onSnapshot, query, orderBy, limit, serverTimestamp, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getStorage, ref as sref, uploadBytes, getDownloadURL, deleteObject } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
+
+/* ---------- constants ---------- */
+const ENT = {
+  CE: { name: "Corcomm Elektronies", short: "Elektronies" },
+  CS: { name: "Corcomm Sekuriteit", short: "Sekuriteit" },
+};
+const ATT = ["Sadler Inc", "Du Randt & Louw"];
+const STATUSES = ["Handed over", "Letter of demand", "Summons issued", "Judgment obtained", "Paying (arrangement)", "Paid in full", "Written off", "Closed"];
+const CLOSED = ["Paid in full", "Written off", "Closed"];
+const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const FILE_TYPES = { pdf: "application/pdf", jpg: "image/jpeg", jpeg: "image/jpeg", png: "image/png", webp: "image/webp" };
+const LOCK_SVG = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>';
+const TS_FIELDS = ["txDate", "createdAt", "at"];
+
+/* ---------- state ---------- */
+const S = {
+  phase: "loading", authMsg: "", settingUp: false,
+  loaded: { users: false, customers: false, transactions: false, payments: false },
+  users: [], customers: [], txs: [], pays: [], activity: [],
+  me: null, view: "overview", entity: "ALL", custId: null,
+  q: "", custFilter: "open", payQ: "", err: null, ver: 0,
+  rep: null,
+};
+S.rep = { from: new Date().getFullYear() + "-01-01", to: localYMD(), attorney: "ALL", idle: false };
+try { const e = localStorage.getItem("cbl_entity"); if (e === "CE" || e === "CS" || e === "ALL") S.entity = e; } catch {}
+
+/* ---------- firebase ---------- */
+const CFG = window.FIREBASE_CONFIG;
+const configured = !!(CFG && CFG.apiKey && !/PASTE/i.test(CFG.apiKey) && CFG.projectId && CFG.projectId !== "your-project");
+let app, auth, db, storage;
+if (configured) {
+  app = initializeApp(CFG);
+  auth = getAuth(app);
+  db = getFirestore(app);
+  storage = getStorage(app);
+}
+
+/* ---------- helpers ---------- */
+function esc(s) { return String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+function localYMD(d = new Date()) { return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+function ymdOf(v) { if (!v) return ""; return v.length === 10 ? v : localYMD(new Date(v)); }
+function fmtDate(v) { const y = ymdOf(v); if (!y) return "—"; const [a, b, c] = y.split("-"); return +c + " " + MON[+b - 1] + " " + a; }
+function fmtTime(iso) { if (!iso) return ""; const d = new Date(iso); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
+function round2(n) { return Math.round((+n || 0) * 100) / 100; }
+function money(n, sep = " ") {
+  n = round2(n); const neg = n < 0; const [i, d] = Math.abs(n).toFixed(2).split(".");
+  return (neg ? "-" : "") + "R" + sep + i.replace(/\B(?=(\d{3})+(?!\d))/g, sep) + "." + d;
+}
+function pct(a, b) { return b > 0 ? Math.max(0, Math.min(100, (a / b) * 100)) : 0; }
+function nowISO() { return new Date().toISOString(); }
+function credit(p) { return round2((+p.amount || 0) + (+p.fees || 0)); }
+function fileSize(b) { return b > 1048576 ? (b / 1048576).toFixed(1) + " MB" : Math.max(1, Math.round(b / 1024)) + " KB"; }
+const isAdmin = () => S.me?.role === "admin";
+const inEnt = code => S.entity === "ALL" || code === S.entity;
+function entChip(code) { return code ? `<span class="ent ${code}">${esc(ENT[code]?.short || code)}</span>` : ""; }
+function statusChip(st) {
+  const cls = st === "Paid in full" ? "done" : st === "Written off" || st === "Closed" ? "off" : "open";
+  return `<span class="chip ${cls}">${esc(st)}</span>`;
+}
+function conv(d) {
+  const o = { id: d.id, ...d.data({ serverTimestamps: "estimate" }) };
+  TS_FIELDS.forEach(k => { if (o[k] && typeof o[k].toDate === "function") o[k] = o[k].toDate().toISOString(); });
+  return o;
+}
+
+/* ---------- derived model ---------- */
+let M = null, Mver = -1;
+function model() {
+  if (Mver === S.ver && M) return M;
+  const custById = {}, txById = {}, txByCust = {}, payByTx = {}, payByCust = {}, userById = {};
+  S.users.forEach(u => userById[u.id] = u);
+  S.customers.forEach(c => { custById[c.id] = c; txByCust[c.id] = []; payByCust[c.id] = []; });
+  S.txs.forEach(t => { txById[t.id] = t; (txByCust[t.customerId] ||= []).push(t); payByTx[t.id] = []; });
+  S.pays.forEach(p => { (payByTx[p.transactionId] ||= []).push(p); (payByCust[p.customerId] ||= []).push(p); });
+  const txStats = {};
+  S.txs.forEach(t => {
+    const paid = round2((payByTx[t.id] || []).reduce((a, p) => a + credit(p), 0));
+    txStats[t.id] = { paid, balance: round2((+t.amount || 0) - paid) };
+  });
+  const custStats = {};
+  S.customers.forEach(c => {
+    const txs = txByCust[c.id] || [], pays = payByCust[c.id] || [];
+    const handed = round2(txs.reduce((a, t) => a + (+t.amount || 0), 0));
+    const rec = round2(pays.reduce((a, p) => a + credit(p), 0));
+    const dates = [...txs.map(t => ymdOf(t.txDate)), ...pays.map(p => p.dateReceived)].filter(Boolean).sort();
+    const open = txs.filter(t => !CLOSED.includes(t.status)).length;
+    const atts = [...new Set(txs.map(t => t.attorney).filter(Boolean))];
+    custStats[c.id] = { handed, rec, balance: round2(handed - rec), last: dates[dates.length - 1] || "", open, count: txs.length, atts };
+  });
+  M = { custById, txById, txByCust, payByTx, payByCust, userById, txStats, custStats };
+  Mver = S.ver;
+  return M;
+}
+function userName(id, fallback) { return model().userById[id]?.name || fallback || "—"; }
+
+/* ---------- UI primitives ---------- */
+let toastTimer;
+function toast(msg, kind) {
+  const r = document.getElementById("toast-root");
+  r.innerHTML = `<div class="toast ${kind === "bad" ? "bad" : ""}" role="status">${esc(msg)}</div>`;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => r.innerHTML = "", kind === "bad" ? 6000 : 3000);
+}
+function openModal(title, body, onMount) {
+  document.getElementById("modal-root").innerHTML = `
+    <div class="scrim" data-act="scrim"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="m-title">
+      <div class="modal-head"><h2 id="m-title">${esc(title)}</h2><button class="btn ghost" data-act="closeModal" aria-label="Close">✕</button></div>
+      ${body}
+    </div></div>`;
+  const first = document.querySelector("#modal-root input:not([type=hidden]):not([disabled]),#modal-root select,#modal-root textarea");
+  if (first) setTimeout(() => first.focus(), 30);
+  onMount && onMount(document.querySelector("#modal-root .modal"));
+}
+function closeModal() { document.getElementById("modal-root").innerHTML = ""; }
+function busy(form, on) { form.querySelectorAll("button").forEach(b => b.disabled = on); }
+function formErr(form, msg) { const e = form.querySelector(".err"); if (e) e.textContent = msg || ""; }
+function writeFailed(e) {
+  console.error(e);
+  if (e?.code === "permission-denied") return "You don't have permission to make this change. Your login may have been disabled, or only an administrator can do this.";
+  if (e?.code === "unavailable") return "No connection. Check your internet and try again.";
+  return "Couldn't save. Check your connection and try again.";
+}
+function authErr(e) {
+  const c = e?.code || "";
+  if (c.includes("invalid-credential") || c.includes("wrong-password") || c.includes("user-not-found") || c.includes("invalid-email")) return "Email or password is incorrect.";
+  if (c.includes("too-many-requests")) return "Too many attempts. Wait a few minutes, or reset your password.";
+  if (c.includes("email-already-in-use")) return "That email address already has a login.";
+  if (c.includes("weak-password")) return "Choose a stronger password (at least 8 characters).";
+  if (c.includes("network")) return "No connection. Check your internet and try again.";
+  if (c.includes("operation-not-allowed")) return "Email/password sign-in isn't switched on in Firebase yet (see the setup guide, step 3).";
+  console.error(e); return "Something went wrong. Try again.";
+}
+
+/* ---------- data writes ---------- */
+async function put(col, id, data) { const r = id ? doc(db, col, id) : doc(collection(db, col)); await setDoc(r, data); return r.id; }
+async function patch(col, id, data) { await updateDoc(doc(db, col, id), data); }
+async function remove(col, id) { await deleteDoc(doc(db, col, id)); }
+async function log(action, text, extra = {}) {
+  try { await put("activity", null, { at: serverTimestamp(), by: S.me?.id || "", byName: S.me?.name || "", action, text, ...extra }); } catch (e) { console.warn(e); }
+}
+function safeName(n) { return n.replace(/[^A-Za-z0-9._-]+/g, "_").slice(-120); }
+async function uploadFiles(files, txId) {
+  for (const f of files) {
+    const ext = (f.name.split(".").pop() || "").toLowerCase();
+    if (!FILE_TYPES[ext]) throw { code: "type", message: `"${f.name}" isn't a PDF or image. Save it as PDF first, then upload.` };
+    if (f.size > 20 * 1048576) throw { code: "size", message: `"${f.name}" is larger than 20 MB.` };
+  }
+  const out = [];
+  for (const f of files) {
+    const type = FILE_TYPES[(f.name.split(".").pop() || "").toLowerCase()];
+    const path = `documents/${txId}/${Date.now()}-${safeName(f.name)}`;
+    await uploadBytes(sref(storage, path), f, { contentType: type });
+    out.push({ path, name: f.name, type, size: f.size, at: nowISO(), by: S.me.id });
+  }
+  return out;
+}
+function uploadErr(e) {
+  if (e?.message && (e.code === "type" || e.code === "size")) return e.message;
+  if (e?.code === "storage/unauthorized") return "You don't have permission to upload documents.";
+  if (e?.code === "storage/quota-exceeded") return "Document storage is full.";
+  if (e?.code === "storage/no-default-bucket" || e?.code === "storage/unknown") return "Document storage isn't set up in Firebase yet (see the setup guide, step 5).";
+  console.error(e); return "The document couldn't be uploaded. Try again.";
+}
+
+/* ---------- render ---------- */
+function render() {
+  const a = document.activeElement, fid = a && a.id, sel = a && "selectionStart" in a ? [a.selectionStart, a.selectionEnd] : null;
+  document.getElementById("app").innerHTML = screen();
+  if (fid) { const n = document.getElementById(fid); if (n && !n.closest("#modal-root")) { n.focus(); try { sel && n.setSelectionRange(sel[0], sel[1]); } catch {} } }
+}
+function screen() {
+  switch (S.phase) {
+    case "config": return authShell(`<div class="banner">This copy of Corcomm Blacklist isn't connected to Firebase yet. Paste your Firebase project's settings into <b>firebase-config.js</b> (setup guide, step 6), then reload.</div>`);
+    case "error": return authShell(`<div class="banner">${esc(S.err)}</div><button class="btn" data-act="reload">Reload</button>`);
+    case "setup": return setupScreen();
+    case "login": return loginScreen();
+    case "app": return appShell();
+    default: return `<div class="auth"><div class="spin" aria-label="Loading"></div></div>`;
+  }
+}
+function wordmark() { return `<div class="mark"><span class="stamp">CORCOMM</span><span class="mark-name">Blacklist</span></div>`; }
+function authShell(inner) { return `<div class="wrap auth"><div class="auth-card">${wordmark()}${inner}</div></div>`; }
+
+function setupScreen() {
+  return authShell(`
+    <div><h2>Set up the first administrator</h2><p class="muted" style="margin:6px 0 0">No one has been set up yet. The first administrator adds the rest of the team afterwards.</p></div>
+    <form data-form="setup" autocomplete="off">
+      <label class="field"><span>Full name</span><input id="su-name" name="name" type="text" required></label>
+      <label class="field"><span>Email address</span><input id="su-email" name="email" type="email" required autocomplete="username"></label>
+      <label class="field"><span>Password</span><input id="su-pw" name="pw" type="password" required minlength="8" autocomplete="new-password"><small>At least 8 characters.</small></label>
+      <label class="field"><span>Confirm password</span><input id="su-pw2" name="pw2" type="password" required autocomplete="new-password"></label>
+      <div class="err"></div>
+      <button class="btn primary" type="submit">Create administrator</button>
+    </form>`);
+}
+function loginScreen() {
+  return authShell(`
+    <div><h2>Sign in</h2><p class="muted" style="margin:6px 0 0">Bad debt handed over to the attorneys for Corcomm Elektronies and Corcomm Sekuriteit.</p></div>
+    ${S.authMsg ? `<div class="banner">${esc(S.authMsg)}</div>` : ""}
+    <form data-form="login">
+      <label class="field"><span>Email address</span><input id="li-email" name="email" type="email" required autocomplete="username"></label>
+      <label class="field"><span>Password</span><input id="li-pw" name="pw" type="password" required autocomplete="current-password"></label>
+      <div class="err"></div>
+      <button class="btn primary" type="submit">Sign in</button>
+    </form>
+    <button class="btn ghost sm" data-act="forgot" style="justify-self:start">Forgot your password?</button>`);
+}
+
+function appShell() {
+  const tabs = [["overview", "Overview"], ["customers", "Customers"], ["payments", "Payments"], ["reports", "Reports"], ["team", isAdmin() ? "Team" : "My account"]];
+  const cur = S.view === "customer" ? "customers" : S.view;
+  return `
+  <header class="top"><div class="wrap">
+    <div class="top-row">${wordmark()}
+      <div class="who"><span class="muted">Signed in as</span><b>${esc(S.me.name)}</b>${isAdmin() ? '<span class="chip">Admin</span>' : ""}
+        <button class="btn sm" data-act="logout">Sign out</button></div>
+    </div>
+    <div class="tabs-row">
+      <nav class="tabs" aria-label="Sections">${tabs.map(([k, l]) => `<button class="tab" data-act="nav" data-view="${k}" ${cur === k ? 'aria-current="page"' : ""}>${l}</button>`).join("")}</nav>
+      <div class="seg" role="group" aria-label="Company">
+        ${[["ALL", "Both companies"], ["CE", "Elektronies"], ["CS", "Sekuriteit"]].map(([k, l]) => `<button data-act="entity" data-ent="${k}" aria-pressed="${S.entity === k}">${k !== "ALL" ? `<span class="dot ${k}"></span>` : ""}${l}</button>`).join("")}
+      </div>
+    </div>
+  </div></header>
+  <main class="wrap">${loadingGate() || viewBody()}</main>`;
+}
+function loadingGate() {
+  const l = S.loaded;
+  if (!(l.users && l.customers && l.transactions && l.payments)) return `<div class="empty"><div class="spin"></div><p>Loading records…</p></div>`;
+  return "";
+}
+function viewBody() {
+  switch (S.view) {
+    case "customers": return customersView();
+    case "customer": return customerView();
+    case "payments": return paymentsView();
+    case "reports": return reportsView();
+    case "team": return teamView();
+    default: return overviewView();
+  }
+}
+
+/* ---------- overview ---------- */
+function entTotals(code) {
+  const m = model(); let handed = 0, rec = 0, open = 0, custs = 0;
+  S.customers.filter(c => c.entity === code).forEach(c => { const s = m.custStats[c.id]; handed += s.handed; rec += s.rec; open += s.open; if (s.count) custs++; });
+  return { handed: round2(handed), rec: round2(rec), bal: round2(handed - rec), open, custs };
+}
+function scorecard(code) {
+  const t = entTotals(code), p = pct(t.rec, t.handed);
+  return `<section class="panel score">
+    <div class="score-head"><h3><span class="dot ${code}"></span>${esc(ENT[code].name)}</h3><span class="muted" style="font-size:12.5px">${t.custs} customer${t.custs === 1 ? "" : "s"} · ${t.open} open matter${t.open === 1 ? "" : "s"}</span></div>
+    <div class="figs">
+      <div class="fig"><div class="label">Handed over</div><div class="v">${money(t.handed)}</div></div>
+      <div class="fig"><div class="label">Recovered</div><div class="v">${money(t.rec)}</div></div>
+      <div class="fig"><div class="label">Outstanding</div><div class="v big">${money(t.bal)}</div></div>
+    </div>
+    <div class="bar-row"><div class="bar ${code}"><i style="width:${p.toFixed(1)}%"></i></div><span class="num">${p.toFixed(1)}% recovered</span></div>
+  </section>`;
+}
+function movements(lim) {
+  const m = model(), rows = [];
+  S.txs.forEach(t => { const c = m.custById[t.customerId]; if (c && inEnt(c.entity)) rows.push({ k: "in", at: t.txDate, date: ymdOf(t.txDate), c, amt: +t.amount, att: t.attorney, ref: t.reference, by: t.createdBy }); });
+  S.pays.forEach(p => { const c = m.custById[p.customerId]; if (c && inEnt(c.entity)) rows.push({ k: "pay", at: p.createdAt, date: p.dateReceived, c, amt: credit(p), att: m.txById[p.transactionId]?.attorney, ref: p.reference, by: p.createdBy }); });
+  rows.sort((a, b) => (b.at || "").localeCompare(a.at || ""));
+  return lim ? rows.slice(0, lim) : rows;
+}
+function overviewView() {
+  const codes = S.entity === "ALL" ? ["CE", "CS"] : [S.entity];
+  if (!S.customers.length) return `<div class="page-head"><div><h1>Overview</h1></div></div>
+    <div class="panel"><div class="empty"><h3>No customers on the blacklist yet</h3><p>Add a customer whose account was handed over to Sadler Inc or Du Randt &amp; Louw, then capture the handover and the documents you sent.</p><button class="btn primary" data-act="newCustomer">Add customer</button></div></div>`;
+  const m = model();
+  const byAtt = ATT.map(a => {
+    let n = 0, h = 0, r = 0;
+    S.txs.forEach(t => { const c = m.custById[t.customerId]; if (t.attorney === a && c && inEnt(c.entity)) { n++; h += +t.amount || 0; r += m.txStats[t.id].paid; } });
+    return { a, n, h: round2(h), r: round2(r), o: round2(h - r) };
+  });
+  const top = S.customers.filter(c => inEnt(c.entity) && m.custStats[c.id].balance > 0.004).sort((a, b) => m.custStats[b.id].balance - m.custStats[a.id].balance).slice(0, 8);
+  const mv = movements(10);
+  return `
+  <div class="page-head"><div><h1>Overview</h1><p class="muted">Position as at ${fmtDate(localYMD())}</p></div>
+    <div class="btn-row"><button class="btn" data-act="newPayment">Record payment</button><button class="btn primary" data-act="newCustomer">Add customer</button></div></div>
+  <div class="grid2">${codes.map(scorecard).join("")}</div>
+  <div class="grid2">
+    <section class="panel"><div class="panel-head"><h3>Largest outstanding balances</h3></div>
+      ${top.length ? `<div class="tbl-wrap"><table><thead><tr><th>Customer</th><th>Attorney</th><th class="r">Outstanding</th></tr></thead><tbody>
+      ${top.map(c => { const s = m.custStats[c.id]; return `<tr class="click" data-act="openCust" data-id="${c.id}"><td><div class="cell-main">${esc(c.name)}</div><div class="cell-sub">${entChip(c.entity)} ${esc(c.accountNo || "")}</div></td><td>${esc(s.atts.join(", ") || "—")}</td><td class="r num">${money(s.balance)}</td></tr>`; }).join("")}
+      </tbody></table></div>` : `<div class="empty"><p>No outstanding balances.</p></div>`}
+    </section>
+    <section class="panel"><div class="panel-head"><h3>Recent movement</h3><button class="btn ghost sm" data-act="nav" data-view="reports">Full report →</button></div>
+      ${mv.length ? `<div class="feed">${mv.map(feedItem).join("")}</div>` : `<div class="empty"><p>No handovers or payments captured yet.</p></div>`}
+    </section>
+  </div>
+  <section class="panel"><div class="panel-head"><h3>By attorney</h3><span class="muted" style="font-size:12.5px">${S.entity === "ALL" ? "Both companies" : esc(ENT[S.entity].name)}</span></div>
+    <div class="tbl-wrap"><table><thead><tr><th>Attorney</th><th class="r">Matters</th><th class="r">Handed over</th><th class="r">Recovered</th><th class="r">Outstanding</th><th>Recovery</th></tr></thead><tbody>
+    ${byAtt.map(x => `<tr><td class="cell-main">${esc(x.a)}</td><td class="r num">${x.n}</td><td class="r num">${money(x.h)}</td><td class="r num">${money(x.r)}</td><td class="r num">${money(x.o)}</td><td><div class="bar-row"><div class="bar mini-bar"><i style="width:${pct(x.r, x.h).toFixed(1)}%"></i></div><span class="num">${pct(x.r, x.h).toFixed(0)}%</span></div></td></tr>`).join("")}
+    </tbody></table></div></section>`;
+}
+function feedItem(r) {
+  return `<div class="feed-item">
+    <div class="ic ${r.k}" aria-hidden="true">${r.k === "in" ? "→" : "R"}</div>
+    <div><div class="t"><a href="#" data-act="openCust" data-id="${r.c.id}" style="color:var(--ink);font-weight:600;text-decoration:none">${esc(r.c.name)}</a> · ${r.k === "in" ? "handed over to " + esc(r.att || "attorneys") : "payment from " + esc(r.att || "attorneys")}</div>
+    <div class="s">${fmtDate(r.date)} ${r.ref ? "· " + esc(r.ref) : ""} · ${esc(userName(r.by))}</div></div>
+    <div class="num" style="white-space:nowrap;${r.k === "pay" ? "color:var(--good)" : ""}">${r.k === "pay" ? "−" : ""}${money(r.amt)}</div>
+  </div>`;
+}
+
+/* ---------- customers ---------- */
+function customersView() {
+  const m = model(), q = S.q.trim().toLowerCase();
+  let list = S.customers.filter(c => inEnt(c.entity));
+  if (q) list = list.filter(c => [c.name, c.accountNo, c.regNo, c.contactPerson].some(v => (v || "").toLowerCase().includes(q)));
+  if (S.custFilter === "open") list = list.filter(c => m.custStats[c.id].balance > 0.004 || m.custStats[c.id].open > 0 || m.custStats[c.id].count === 0);
+  if (S.custFilter === "settled") list = list.filter(c => m.custStats[c.id].count > 0 && m.custStats[c.id].open === 0);
+  list.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+  return `
+  <div class="page-head"><div><h1>Customers</h1><p class="muted">${list.length} shown</p></div><button class="btn primary" data-act="newCustomer">Add customer</button></div>
+  <div class="toolbar">
+    <label class="field" style="flex:1 1 260px"><span>Search</span><input id="cust-q" type="search" placeholder="Name, account no, ID / reg no" value="${esc(S.q)}" data-input="q"></label>
+    <div class="seg" role="group" aria-label="Status filter" style="margin:0">${[["open", "Open"], ["settled", "Settled"], ["all", "All"]].map(([k, l]) => `<button data-act="custFilter" data-v="${k}" aria-pressed="${S.custFilter === k}">${l}</button>`).join("")}</div>
+  </div>
+  <section class="panel">${list.length ? `<div class="tbl-wrap"><table>
+    <thead><tr><th>Customer</th><th>Company</th><th>Attorney</th><th class="r">Handed over</th><th class="r">Recovered</th><th class="r">Balance</th><th class="hide-sm">Progress</th><th>Last movement</th></tr></thead>
+    <tbody>${list.map(c => { const s = m.custStats[c.id], p = pct(s.rec, s.handed); return `<tr class="click" data-act="openCust" data-id="${c.id}">
+      <td><div class="cell-main">${esc(c.name)}</div><div class="cell-sub">${esc(c.accountNo || "No account no")}</div></td>
+      <td>${entChip(c.entity)}</td><td>${esc(s.atts.join(", ") || "—")}</td>
+      <td class="r num">${money(s.handed)}</td><td class="r num">${money(s.rec)}</td><td class="r num" style="font-weight:600">${money(s.balance)}</td>
+      <td class="hide-sm"><div class="bar-row"><div class="bar mini-bar ${c.entity}"><i style="width:${p.toFixed(1)}%"></i></div><span class="num">${p.toFixed(0)}%</span></div></td>
+      <td>${s.last ? fmtDate(s.last) : '<span class="muted">No handover yet</span>'}</td></tr>`; }).join("")}</tbody></table></div>`
+    : `<div class="empty"><p>${S.customers.length ? "No customers match this filter." : "No customers yet. Add the first customer handed over to the attorneys."}</p>${S.customers.length ? "" : '<button class="btn primary" data-act="newCustomer">Add customer</button>'}</div>`}</section>`;
+}
+
+function customerView() {
+  const m = model(), c = m.custById[S.custId];
+  if (!c) return `<div class="panel"><div class="empty"><p>This customer no longer exists.</p><button class="btn" data-act="nav" data-view="customers">Back to customers</button></div></div>`;
+  const s = m.custStats[c.id], p = pct(s.rec, s.handed);
+  const txs = (m.txByCust[c.id] || []).slice().sort((a, b) => (b.txDate || "").localeCompare(a.txDate || ""));
+  const pays = (m.payByCust[c.id] || []).slice().sort((a, b) => (b.dateReceived || "").localeCompare(a.dateReceived || "") || (b.createdAt || "").localeCompare(a.createdAt || ""));
+  const meta = [["Account no", c.accountNo], ["ID / Reg no", c.regNo], ["Contact", c.contactPerson], ["Phone", c.phone], ["Email", c.email], ["Address", c.address]].filter(x => x[1]);
+  return `
+  <div><button class="btn ghost sm" data-act="nav" data-view="customers">← All customers</button></div>
+  <section class="panel cust-head">
+    <div class="page-head" style="align-items:flex-start">
+      <div style="display:grid;gap:6px;min-width:0"><div>${entChip(c.entity)}</div><h1 style="overflow-wrap:anywhere">${esc(c.name)}</h1></div>
+      <div class="btn-row"><button class="btn" data-act="editCustomer" data-id="${c.id}">Edit details</button><button class="btn" data-act="newPayment" data-cust="${c.id}" ${txs.length ? "" : "disabled"}>Record payment</button><button class="btn primary" data-act="newTx" data-cust="${c.id}">New handover</button></div>
+    </div>
+    ${meta.length ? `<div class="cust-meta">${meta.map(([k, v]) => `<span><b>${k}</b>${esc(v)}</span>`).join("")}</div>` : ""}
+    ${c.notes ? `<div class="note" style="white-space:pre-wrap">${esc(c.notes)}</div>` : ""}
+    <div class="figs" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr))">
+      <div class="fig"><div class="label">Handed over</div><div class="v">${money(s.handed)}</div></div>
+      <div class="fig"><div class="label">Recovered</div><div class="v">${money(s.rec)}</div></div>
+      <div class="fig"><div class="label">Balance</div><div class="v big">${money(s.balance)}</div></div>
+      <div class="fig"><div class="label">Last movement</div><div class="v" style="font-family:var(--f-body)">${s.last ? fmtDate(s.last) : "—"}</div></div>
+    </div>
+    <div class="bar-row"><div class="bar ${c.entity}"><i style="width:${p.toFixed(1)}%"></i></div><span class="num">${p.toFixed(1)}% recovered</span></div>
+  </section>
+
+  <div class="section-title"><h2>Handovers to attorneys</h2><span class="muted">${txs.length} matter${txs.length === 1 ? "" : "s"}</span></div>
+  ${txs.length ? txs.map(t => matterCard(t, m)).join("") : `<section class="panel"><div class="empty"><p>No handover captured for this customer yet.</p><button class="btn primary" data-act="newTx" data-cust="${c.id}">Capture handover</button></div></section>`}
+
+  <section class="panel"><div class="panel-head"><h3>Payments received from attorneys</h3></div>
+    ${pays.length ? payTable(pays, m, false) : `<div class="empty"><p>No payments received yet.</p></div>`}
+  </section>
+  ${isAdmin() && !txs.length ? `<div><button class="btn danger sm" data-act="delCustomer" data-id="${c.id}">Delete customer</button></div>` : ""}`;
+}
+function matterCard(t, m) {
+  const st = m.txStats[t.id], docs = t.docs || [];
+  return `<article class="matter">
+    <div class="matter-head">
+      <div style="display:grid;gap:4px;min-width:0"><div class="ref">${esc(t.reference || "Handover")}</div><div class="cell-sub">${esc(t.description || "")}</div></div>
+      <div class="btn-row">${statusChip(t.status || "Handed over")}
+        <button class="btn sm" data-act="editTx" data-id="${t.id}">Update</button>
+        ${!CLOSED.includes(t.status) ? `<button class="btn sm" data-act="newPayment" data-cust="${t.customerId}" data-tx="${t.id}">Record payment</button>` : ""}
+      </div>
+    </div>
+    <div class="kv">
+      <div><div class="label">Transaction date</div><div class="v"><span class="chip lock" title="Set automatically by the server when captured. Can't be changed.">${LOCK_SVG}</span> ${fmtDate(t.txDate)} <span class="muted">${fmtTime(t.txDate)}</span></div></div>
+      <div><div class="label">Attorney</div><div class="v">${esc(t.attorney)}</div></div>
+      <div><div class="label">Submitted to attorney</div><div class="v">${fmtDate(t.submittedDate)}</div></div>
+      <div><div class="label">Attorney ref</div><div class="v">${esc(t.attorneyRef || "—")}</div></div>
+      <div><div class="label">Amount handed over</div><div class="v num">${money(t.amount)}</div></div>
+      <div><div class="label">Recovered</div><div class="v num">${money(st.paid)}</div></div>
+      <div><div class="label">Balance</div><div class="v num" style="font-weight:600">${money(st.balance)}</div></div>
+      <div><div class="label">Captured by</div><div class="v">${esc(userName(t.createdBy, t.createdByName))}</div></div>
+    </div>
+    ${t.notes ? `<div class="note" style="padding:0 16px 12px;white-space:pre-wrap">${esc(t.notes)}</div>` : ""}
+    <div class="docs"><span class="label" style="margin-right:4px">Documents</span>
+      ${docs.length ? docs.map((d, i) => `<span class="doc"><span aria-hidden="true">${d.type === "application/pdf" ? "PDF" : "IMG"}</span><button class="linkbtn" data-act="openDoc" data-tx="${t.id}" data-i="${i}" title="${esc(d.name)} · ${fileSize(d.size || 0)}">${esc(d.name)}</button>${isAdmin() ? `<button data-act="delDoc" data-tx="${t.id}" data-i="${i}" aria-label="Remove ${esc(d.name)}">×</button>` : ""}</span>`).join("") : '<span class="muted" style="font-size:12.5px">None uploaded</span>'}
+      <label class="btn sm ghost" style="cursor:pointer">+ Add documents<input type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.webp" data-upload="${t.id}" hidden></label>
+    </div>
+    ${isAdmin() && !(m.payByTx[t.id] || []).length ? `<div style="padding:0 16px 14px"><button class="btn ghost sm" data-act="delTx" data-id="${t.id}" style="color:var(--bad)">Delete this handover</button></div>` : ""}
+  </article>`;
+}
+function payTable(pays, m, withCust) {
+  const tot = pays.reduce((a, p) => { a.n += +p.amount || 0; a.f += +p.fees || 0; return a; }, { n: 0, f: 0 });
+  return `<div class="tbl-wrap"><table><thead><tr><th>Date received</th>${withCust ? "<th>Customer</th>" : ""}<th>Matter</th><th>Attorney</th><th>Reference</th><th class="r">Paid over (net)</th><th class="r">Attorney fees</th><th class="r">Credited</th><th>Captured</th>${isAdmin() ? "<th></th>" : ""}</tr></thead>
+  <tbody>${pays.map(p => { const t = m.txById[p.transactionId], c = m.custById[p.customerId]; return `<tr>
+    <td style="white-space:nowrap">${fmtDate(p.dateReceived)}</td>
+    ${withCust ? `<td><a href="#" data-act="openCust" data-id="${p.customerId}" style="color:var(--ink);font-weight:600">${esc(c?.name || "—")}</a><div class="cell-sub">${entChip(c?.entity)}</div></td>` : ""}
+    <td>${esc(t?.reference || "—")}</td><td>${esc(t?.attorney || "—")}</td><td>${esc(p.reference || "—")}${p.notes ? `<div class="cell-sub">${esc(p.notes)}</div>` : ""}</td>
+    <td class="r num">${money(p.amount)}</td><td class="r num">${money(p.fees || 0)}</td><td class="r num" style="font-weight:600">${money(credit(p))}</td>
+    <td class="cell-sub" style="white-space:nowrap">${esc(userName(p.createdBy, p.createdByName))}<br>${fmtDate(p.createdAt)}</td>
+    ${isAdmin() ? `<td><button class="btn ghost sm" data-act="delPay" data-id="${p.id}" aria-label="Delete payment">Delete</button></td>` : ""}</tr>`; }).join("")}</tbody>
+  <tfoot><tr><td colspan="${withCust ? 5 : 4}">Total</td><td class="r num">${money(tot.n)}</td><td class="r num">${money(tot.f)}</td><td class="r num">${money(tot.n + tot.f)}</td><td colspan="${isAdmin() ? 2 : 1}"></td></tr></tfoot></table></div>`;
+}
+
+/* ---------- payments ---------- */
+function paymentsView() {
+  const m = model(), q = S.payQ.trim().toLowerCase();
+  let pays = S.pays.filter(p => { const c = m.custById[p.customerId]; return c && inEnt(c.entity); });
+  if (q) pays = pays.filter(p => [m.custById[p.customerId]?.name, p.reference, m.txById[p.transactionId]?.reference].some(v => (v || "").toLowerCase().includes(q)));
+  pays.sort((a, b) => (b.dateReceived || "").localeCompare(a.dateReceived || "") || (b.createdAt || "").localeCompare(a.createdAt || ""));
+  return `
+  <div class="page-head"><div><h1>Payments from attorneys</h1><p class="muted">${pays.length} payment${pays.length === 1 ? "" : "s"}</p></div><button class="btn primary" data-act="newPayment" ${S.txs.length ? "" : "disabled"}>Record payment</button></div>
+  <div class="toolbar"><label class="field" style="flex:1 1 260px"><span>Search</span><input id="pay-q" type="search" placeholder="Customer, matter or payment reference" value="${esc(S.payQ)}" data-input="payQ"></label></div>
+  <section class="panel">${pays.length ? payTable(pays, m, true) : `<div class="empty"><p>${S.txs.length ? "No payments match." : "Capture a handover first. Payments are recorded against a handover."}</p></div>`}</section>`;
+}
+
+/* ---------- report engine ---------- */
+function buildReport() {
+  const m = model(), { from, to, attorney, idle } = S.rep;
+  const codes = S.entity === "ALL" ? ["CE", "CS"] : [S.entity];
+  const out = { codes, from, to, attorney, ents: {}, movements: [], byAtt: {} };
+  ATT.forEach(a => out.byAtt[a] = { handed: 0, rec: 0, close: 0 });
+  codes.forEach(code => {
+    const rows = []; const tot = { open: 0, handed: 0, rec: 0, fees: 0, close: 0, toDate: 0, recToDate: 0 };
+    S.customers.filter(c => c.entity === code).forEach(c => {
+      const txs = (m.txByCust[c.id] || []).filter(t => attorney === "ALL" || t.attorney === attorney);
+      if (!txs.length) return;
+      const txIds = new Set(txs.map(t => t.id));
+      const pays = (m.payByCust[c.id] || []).filter(p => txIds.has(p.transactionId));
+      let open = 0, handed = 0, rec = 0, fees = 0, toDate = 0, recToDate = 0, last = "";
+      txs.forEach(t => {
+        const d = ymdOf(t.txDate), a = +t.amount || 0;
+        if (d > to) return;
+        toDate += a; if (d < from) open += a; else handed += a;
+        if (d > last) last = d;
+        if (d >= from) { out.movements.push({ date: d, at: t.txDate, code, cust: c, type: "Handed over", att: t.attorney, ref: t.reference, attRef: t.attorneyRef, debit: a, credit: 0, fees: 0, net: 0 }); out.byAtt[t.attorney] && (out.byAtt[t.attorney].handed += a); }
+        out.byAtt[t.attorney] && (out.byAtt[t.attorney].close += a);
+      });
+      pays.forEach(p => {
+        const d = p.dateReceived, cr = credit(p), t = m.txById[p.transactionId];
+        if (d > to) return;
+        recToDate += cr; if (d < from) open -= cr; else { rec += cr; fees += +p.fees || 0; }
+        if (d > last) last = d;
+        if (d >= from) { out.movements.push({ date: d, at: p.createdAt, code, cust: c, type: "Payment received", att: t?.attorney, ref: p.reference || t?.reference, attRef: t?.attorneyRef, debit: 0, credit: cr, fees: +p.fees || 0, net: +p.amount || 0 }); t && out.byAtt[t.attorney] && (out.byAtt[t.attorney].rec += cr); }
+        t && out.byAtt[t.attorney] && (out.byAtt[t.attorney].close -= cr);
+      });
+      open = round2(open); handed = round2(handed); rec = round2(rec);
+      const close = round2(open + handed - rec);
+      const moved = handed || rec;
+      if (!idle && !moved && Math.abs(close) < 0.005) return;
+      if (!toDate) return;
+      const openMatters = txs.filter(t => ymdOf(t.txDate) <= to && !CLOSED.includes(t.status)).length;
+      rows.push({ c, open, handed, rec, fees: round2(fees), close, toDate: round2(toDate), recToDate: round2(recToDate), pct: pct(recToDate, toDate), last, atts: [...new Set(txs.map(t => t.attorney))].join(", "), status: openMatters ? `${openMatters} open` : "Settled" });
+      tot.open += open; tot.handed += handed; tot.rec += rec; tot.fees += fees; tot.close += close; tot.toDate += toDate; tot.recToDate += recToDate;
+    });
+    rows.sort((a, b) => b.close - a.close || a.c.name.localeCompare(b.c.name));
+    Object.keys(tot).forEach(k => tot[k] = round2(tot[k]));
+    out.ents[code] = { rows, tot };
+  });
+  out.movements.sort((a, b) => a.date.localeCompare(b.date) || (a.at || "").localeCompare(b.at || ""));
+  Object.values(out.byAtt).forEach(v => { v.handed = round2(v.handed); v.rec = round2(v.rec); v.close = round2(v.close); });
+  return out;
+}
+function reportsView() {
+  const R = buildReport(), r = S.rep;
+  return `
+  <div class="page-head"><div><h1>Progress &amp; movement report</h1><p class="muted">${S.entity === "ALL" ? "Both companies" : esc(ENT[S.entity].name)} · ${fmtDate(r.from)} to ${fmtDate(r.to)}${r.attorney !== "ALL" ? " · " + esc(r.attorney) : ""}</p></div>
+    <div class="btn-row"><button class="btn" data-act="exportPdf">Export PDF</button><button class="btn primary" data-act="exportXlsx">Export Excel</button></div></div>
+  <section class="panel panel-body"><div class="toolbar">
+    <label class="field"><span>From</span><input id="rep-from" type="date" value="${esc(r.from)}" data-rep="from"></label>
+    <label class="field"><span>To</span><input id="rep-to" type="date" value="${esc(r.to)}" data-rep="to"></label>
+    <label class="field"><span>Attorney</span><select id="rep-att" data-rep="attorney"><option value="ALL">Both attorneys</option>${ATT.map(a => `<option ${r.attorney === a ? "selected" : ""}>${esc(a)}</option>`).join("")}</select></label>
+    <label style="display:flex;gap:8px;align-items:center;min-height:38px"><input id="rep-idle" type="checkbox" data-rep="idle" ${r.idle ? "checked" : ""}> Include settled customers with no movement</label>
+    <div class="btn-row" style="margin-left:auto"><button class="btn ghost sm" data-act="repPreset" data-p="month">This month</button><button class="btn ghost sm" data-act="repPreset" data-p="year">This year</button><button class="btn ghost sm" data-act="repPreset" data-p="all">All time</button></div>
+  </div><p class="note" style="margin:10px 0 0">Use the company switch at the top to report on Elektronies or Sekuriteit separately. Exports follow the same selection.</p></section>
+  ${R.codes.map(code => repEntity(code, R.ents[code])).join("")}
+  ${R.codes.length > 1 ? `<section class="panel"><div class="panel-head"><h3>Combined</h3></div><div class="tbl-wrap"><table><thead><tr><th>Company</th><th class="r">Opening</th><th class="r">Handed over</th><th class="r">Recovered</th><th class="r">Closing balance</th></tr></thead><tbody>
+    ${R.codes.map(c => { const t = R.ents[c].tot; return `<tr><td>${entChip(c)}</td><td class="r num">${money(t.open)}</td><td class="r num">${money(t.handed)}</td><td class="r num">${money(t.rec)}</td><td class="r num">${money(t.close)}</td></tr>`; }).join("")}
+    </tbody><tfoot><tr><td>Total</td>${["open", "handed", "rec", "close"].map(k => `<td class="r num">${money(R.codes.reduce((a, c) => a + R.ents[c].tot[k], 0))}</td>`).join("")}</tr></tfoot></table></div></section>` : ""}
+  <section class="panel"><div class="panel-head"><h3>By attorney</h3><span class="muted" style="font-size:12.5px">Period movement and balance at ${fmtDate(r.to)}</span></div><div class="tbl-wrap"><table><thead><tr><th>Attorney</th><th class="r">Handed over</th><th class="r">Recovered</th><th class="r">Outstanding</th></tr></thead><tbody>
+    ${ATT.filter(a => r.attorney === "ALL" || a === r.attorney).map(a => { const v = R.byAtt[a]; return `<tr><td class="cell-main">${esc(a)}</td><td class="r num">${money(v.handed)}</td><td class="r num">${money(v.rec)}</td><td class="r num">${money(v.close)}</td></tr>`; }).join("")}
+  </tbody></table></div></section>
+  <section class="panel"><div class="panel-head"><h3>Movement in period</h3><span class="muted" style="font-size:12.5px">${R.movements.length} entr${R.movements.length === 1 ? "y" : "ies"}</span></div>
+    ${R.movements.length ? `<div class="tbl-wrap"><table><thead><tr><th>Date</th><th>Customer</th><th>Company</th><th>Movement</th><th>Attorney</th><th>Reference</th><th class="r">Handed over</th><th class="r">Recovered</th></tr></thead><tbody>
+    ${R.movements.map(x => `<tr><td style="white-space:nowrap">${fmtDate(x.date)}</td><td class="cell-main">${esc(x.cust.name)}</td><td>${entChip(x.code)}</td><td>${x.type}</td><td>${esc(x.att || "—")}</td><td>${esc(x.ref || "—")}</td><td class="r num">${x.debit ? money(x.debit) : ""}</td><td class="r num">${x.credit ? money(x.credit) : ""}</td></tr>`).join("")}
+    </tbody><tfoot><tr><td colspan="6">Total</td><td class="r num">${money(R.movements.reduce((a, x) => a + x.debit, 0))}</td><td class="r num">${money(R.movements.reduce((a, x) => a + x.credit, 0))}</td></tr></tfoot></table></div>` : `<div class="empty"><p>No handovers or payments in this period.</p></div>`}
+  </section>
+  <section class="panel"><div class="panel-head"><h3>Activity log</h3><span class="muted" style="font-size:12.5px">Latest ${Math.min(S.activity.length, 100)} changes by the team</span></div>
+    ${S.activity.length ? `<div class="tbl-wrap"><table><thead><tr><th>When</th><th>Who</th><th>What</th></tr></thead><tbody>${S.activity.slice(0, 100).map(a => `<tr><td style="white-space:nowrap">${fmtDate(a.at)} <span class="muted">${fmtTime(a.at)}</span></td><td style="white-space:nowrap">${esc(userName(a.by, a.byName))}</td><td>${esc(a.text)}</td></tr>`).join("")}</tbody></table></div>` : `<div class="empty"><p>Nothing logged yet.</p></div>`}
+  </section>`;
+}
+function repEntity(code, e) {
+  const t = e.tot;
+  return `<section class="panel">
+    <div class="panel-head"><h3 style="display:flex;align-items:center;gap:8px"><span class="dot ${code}"></span>${esc(ENT[code].name)}</h3>
+      <div class="cust-meta"><span><b>Opening</b><span class="num">${money(t.open)}</span></span><span><b>Handed over</b><span class="num">${money(t.handed)}</span></span><span><b>Recovered</b><span class="num">${money(t.rec)}</span></span><span><b>Closing</b><span class="num" style="font-weight:600">${money(t.close)}</span></span></div></div>
+    ${e.rows.length ? `<div class="tbl-wrap"><table><thead><tr><th>Customer</th><th>Attorney</th><th class="r">Opening</th><th class="r">Handed over</th><th class="r">Recovered</th><th class="r">Closing</th><th>Recovered to date</th><th>Last movement</th><th>Status</th></tr></thead><tbody>
+    ${e.rows.map(r => `<tr class="click" data-act="openCust" data-id="${r.c.id}"><td><div class="cell-main">${esc(r.c.name)}</div><div class="cell-sub">${esc(r.c.accountNo || "")}</div></td><td>${esc(r.atts)}</td>
+      <td class="r num">${money(r.open)}</td><td class="r num">${money(r.handed)}</td><td class="r num">${money(r.rec)}</td><td class="r num" style="font-weight:600">${money(r.close)}</td>
+      <td><div class="bar-row"><div class="bar mini-bar ${code}"><i style="width:${r.pct.toFixed(1)}%"></i></div><span class="num">${r.pct.toFixed(0)}%</span></div></td>
+      <td style="white-space:nowrap">${fmtDate(r.last)}</td><td>${r.status === "Settled" ? '<span class="chip done">Settled</span>' : `<span class="chip open">${r.status}</span>`}</td></tr>`).join("")}
+    </tbody><tfoot><tr><td colspan="2">Total · ${e.rows.length} customer${e.rows.length === 1 ? "" : "s"}</td><td class="r num">${money(t.open)}</td><td class="r num">${money(t.handed)}</td><td class="r num">${money(t.rec)}</td><td class="r num">${money(t.close)}</td><td><span class="num">${pct(t.recToDate, t.toDate).toFixed(0)}%</span></td><td colspan="2"></td></tr></tfoot></table></div>`
+    : `<div class="empty"><p>No customers with movement or a balance in this period.</p></div>`}
+  </section>`;
+}
+
+/* ---------- team ---------- */
+function teamView() {
+  const mine = `<section class="panel"><div class="panel-head"><h3>My password</h3></div><div class="panel-body">
+    <form data-form="myPw" class="form-grid" style="max-width:640px">
+      <label class="field"><span>Current password</span><input id="mp-cur" name="cur" type="password" required autocomplete="current-password"></label><div></div>
+      <label class="field"><span>New password</span><input id="mp-new" name="pw" type="password" required minlength="8" autocomplete="new-password"></label>
+      <label class="field"><span>Confirm new password</span><input id="mp-new2" name="pw2" type="password" required autocomplete="new-password"></label>
+      <div class="err full"></div><div class="full"><button class="btn primary" type="submit">Change password</button></div>
+    </form></div></section>`;
+  if (!isAdmin()) return `<div class="page-head"><div><h1>My account</h1><p class="muted">${esc(S.me.name)} · ${esc(S.me.email)}</p></div></div>${mine}`;
+  const users = S.users.slice().sort((a, b) => (b.active !== false) - (a.active !== false) || (a.name || "").localeCompare(b.name || ""));
+  return `
+  <div class="page-head"><div><h1>Team</h1><p class="muted">People who can sign in to the blacklist</p></div><button class="btn primary" data-act="newUser">Add team user</button></div>
+  <section class="panel"><div class="tbl-wrap"><table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Added</th><th></th></tr></thead><tbody>
+  ${users.map(u => `<tr><td class="cell-main">${esc(u.name)}${u.id === S.me.id ? ' <span class="muted">(you)</span>' : ""}</td><td>${esc(u.email)}</td>
+    <td>${u.role === "admin" ? "Administrator" : "Team user"}</td><td>${u.active === false ? '<span class="chip off">Disabled</span>' : '<span class="chip done">Active</span>'}</td>
+    <td>${fmtDate(u.createdAt)}</td>
+    <td><div class="btn-row" style="justify-content:flex-end"><button class="btn sm" data-act="editUser" data-id="${u.id}">Edit</button><button class="btn sm" data-act="resetPw" data-id="${u.id}">Send password reset</button></div></td></tr>`).join("")}
+  </tbody></table></div></section>${mine}`;
+}
+
+/* ---------- modal forms ---------- */
+function customerForm(c) {
+  c = c || {};
+  const lockEnt = c.id && !isAdmin();
+  return `<form data-form="customer" data-id="${c.id || ""}" autocomplete="off"><div class="modal-body">
+    <div class="field"><span>Company</span>
+      <div class="pick">${["CE", "CS"].map(k => `<label><input type="radio" name="entity" value="${k}" ${(c.entity || (S.entity !== "ALL" ? S.entity : "")) === k ? "checked" : ""} ${lockEnt ? "disabled" : ""} required><span class="dot ${k}"></span>${ENT[k].name}</label>`).join("")}</div>
+      ${lockEnt ? "<small>Only an administrator can move a customer to the other company.</small>" : ""}</div>
+    <div class="form-grid">
+      <label class="field full"><span>Customer name</span><input id="cf-name" name="name" type="text" required value="${esc(c.name)}"></label>
+      <label class="field"><span>Account number</span><input id="cf-acc" name="accountNo" type="text" value="${esc(c.accountNo)}"></label>
+      <label class="field"><span>ID / Company reg. number</span><input id="cf-reg" name="regNo" type="text" value="${esc(c.regNo)}"></label>
+      <label class="field"><span>Contact person</span><input id="cf-cp" name="contactPerson" type="text" value="${esc(c.contactPerson)}"></label>
+      <label class="field"><span>Phone</span><input id="cf-ph" name="phone" type="text" value="${esc(c.phone)}"></label>
+      <label class="field full"><span>Email</span><input id="cf-em" name="email" type="email" value="${esc(c.email)}"></label>
+      <label class="field full"><span>Address</span><textarea id="cf-ad" name="address" rows="2">${esc(c.address)}</textarea></label>
+      <label class="field full"><span>Notes</span><textarea id="cf-no" name="notes" rows="2">${esc(c.notes)}</textarea></label>
+    </div><div class="err"></div></div>
+    <div class="modal-foot"><button class="btn" type="button" data-act="closeModal">Cancel</button><button class="btn primary" type="submit">${c.id ? "Save changes" : "Add customer"}</button></div></form>`;
+}
+function txForm(custId) {
+  const m = model(), c = m.custById[custId];
+  const custs = S.customers.filter(x => inEnt(x.entity)).sort((a, b) => a.name.localeCompare(b.name));
+  return `<form data-form="tx" autocomplete="off"><div class="modal-body">
+    <div class="form-grid">
+      <label class="field full"><span>Customer</span>${c ? `<input type="hidden" name="customerId" value="${c.id}"><div class="locked" style="font-family:var(--f-body)">${esc(c.name)} ${entChip(c.entity)}</div>`
+        : `<select id="tx-cust" name="customerId" required><option value="">Choose a customer…</option>${custs.map(x => `<option value="${x.id}">${esc(x.name)} (${ENT[x.entity].short})</option>`).join("")}</select>`}</label>
+      <div class="field"><span>Transaction date</span><div class="locked">${LOCK_SVG}${fmtDate(localYMD())}</div><small>Set to today automatically by the server. It can't be changed later.</small></div>
+      <label class="field"><span>Amount handed over (R)</span><input id="tx-amt" name="amount" type="number" step="0.01" min="0.01" required inputmode="decimal"></label>
+      <label class="field"><span>Invoice / account reference</span><input id="tx-ref" name="reference" type="text" placeholder="e.g. INV 10452"></label>
+      <label class="field"><span>Attorney</span><select id="tx-att" name="attorney" required><option value="">Choose…</option>${ATT.map(a => `<option>${esc(a)}</option>`).join("")}</select></label>
+      <label class="field"><span>Date submitted to attorney</span><input id="tx-sub" name="submittedDate" type="date" required max="${localYMD()}" value="${localYMD()}"></label>
+      <label class="field"><span>Attorney's file reference</span><input id="tx-aref" name="attorneyRef" type="text"></label>
+      <label class="field full"><span>Description</span><input id="tx-desc" name="description" type="text" placeholder="What the debt is for, e.g. armed response Jan–Jun 2026"></label>
+      <label class="field full"><span>Documents submitted to the attorney</span><input id="tx-files" name="files" type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.webp"><small>PDF, JPG, PNG or WEBP, up to 20 MB each. Save Word or Excel files as PDF first.</small></label>
+      <label class="field full"><span>Notes</span><textarea id="tx-notes" name="notes" rows="2"></textarea></label>
+    </div><div class="err"></div></div>
+    <div class="modal-foot"><button class="btn" type="button" data-act="closeModal">Cancel</button><button class="btn primary" type="submit">Capture handover</button></div></form>`;
+}
+function txEditForm(t) {
+  const st = model().txStats[t.id];
+  return `<form data-form="txEdit" data-id="${t.id}" autocomplete="off"><div class="modal-body"><div class="form-grid">
+    <div class="field"><span>Transaction date</span><div class="locked">${LOCK_SVG}${fmtDate(t.txDate)} ${fmtTime(t.txDate)}</div><small>Locked. Set when the handover was captured.</small></div>
+    <label class="field"><span>Status</span><select id="te-st" name="status">${STATUSES.map(s => `<option ${t.status === s ? "selected" : ""}>${s}</option>`).join("")}</select></label>
+    <label class="field"><span>Amount handed over (R)</span>${isAdmin() ? `<input id="te-amt" name="amount" type="number" step="0.01" min="0.01" required value="${esc(t.amount)}">` : `<div class="locked">${money(t.amount)}</div>`}<small>${isAdmin() ? "Recovered so far: " + money(st.paid) : "Only an administrator can correct the amount."}</small></label>
+    <label class="field"><span>Attorney</span><select id="te-att" name="attorney">${ATT.map(a => `<option ${t.attorney === a ? "selected" : ""}>${esc(a)}</option>`).join("")}</select></label>
+    <label class="field"><span>Date submitted to attorney</span><input id="te-sub" name="submittedDate" type="date" required max="${localYMD()}" value="${esc(t.submittedDate)}"></label>
+    <label class="field"><span>Attorney's file reference</span><input id="te-aref" name="attorneyRef" type="text" value="${esc(t.attorneyRef)}"></label>
+    <label class="field"><span>Invoice / account reference</span><input id="te-ref" name="reference" type="text" value="${esc(t.reference)}"></label>
+    <label class="field"><span>Description</span><input id="te-desc" name="description" type="text" value="${esc(t.description)}"></label>
+    <label class="field full"><span>Notes</span><textarea id="te-notes" name="notes" rows="3">${esc(t.notes)}</textarea></label>
+  </div><div class="err"></div></div>
+  <div class="modal-foot"><button class="btn" type="button" data-act="closeModal">Cancel</button><button class="btn primary" type="submit">Save changes</button></div></form>`;
+}
+function payForm(custId, txId) {
+  const m = model();
+  const custs = S.customers.filter(c => inEnt(c.entity) && (m.txByCust[c.id] || []).length).sort((a, b) => a.name.localeCompare(b.name));
+  return `<form data-form="pay" autocomplete="off"><div class="modal-body"><div class="form-grid">
+    <label class="field full"><span>Customer</span><select id="pf-cust" name="customerId" required><option value="">Choose a customer…</option>${custs.map(c => `<option value="${c.id}" ${c.id === custId ? "selected" : ""}>${esc(c.name)} (${ENT[c.entity].short})</option>`).join("")}</select></label>
+    <label class="field full"><span>Handover (matter)</span><select id="pf-tx" name="transactionId" required>${matterOptions(custId, txId)}</select></label>
+    <label class="field"><span>Date received from attorney</span><input id="pf-date" name="dateReceived" type="date" required max="${localYMD()}" value="${localYMD()}"></label>
+    <label class="field"><span>Payment reference</span><input id="pf-ref" name="reference" type="text" placeholder="EFT ref / trust statement no"></label>
+    <label class="field"><span>Amount paid over to Corcomm (R)</span><input id="pf-amt" name="amount" type="number" step="0.01" min="0" required inputmode="decimal"></label>
+    <label class="field"><span>Attorney fees deducted (R)</span><input id="pf-fees" name="fees" type="number" step="0.01" min="0" value="0" inputmode="decimal"><small>Collection fees the attorney kept from what the debtor paid.</small></label>
+    <div class="field full"><span>Credited to the customer's balance</span><div class="locked" id="pf-credit">R 0.00</div></div>
+    <label class="field full"><span>Notes</span><textarea id="pf-notes" name="notes" rows="2"></textarea></label>
+  </div><div class="err"></div></div>
+  <div class="modal-foot"><button class="btn" type="button" data-act="closeModal">Cancel</button><button class="btn primary" type="submit">Record payment</button></div></form>`;
+}
+function matterOptions(custId, txId) {
+  if (!custId) return `<option value="">Choose a customer first</option>`;
+  const m = model(); const txs = (m.txByCust[custId] || []).slice().sort((a, b) => (b.txDate || "").localeCompare(a.txDate || ""));
+  const pick = txId || (txs.filter(t => !CLOSED.includes(t.status))[0] || txs[0])?.id;
+  return txs.map(t => `<option value="${t.id}" ${t.id === pick ? "selected" : ""}>${esc(t.reference || "Handover")} · ${esc(t.attorney)} · ${fmtDate(t.txDate)} · balance ${money(m.txStats[t.id].balance)}</option>`).join("");
+}
+function userForm(u) {
+  u = u || {};
+  return `<form data-form="user" data-id="${u.id || ""}" autocomplete="off"><div class="modal-body"><div class="form-grid">
+    <label class="field full"><span>Full name</span><input id="uf-name" name="name" type="text" required value="${esc(u.name)}"></label>
+    ${u.id ? `<div class="field"><span>Email address</span><div class="locked" style="font-family:var(--f-body)">${esc(u.email)}</div></div>` : `<label class="field"><span>Email address</span><input id="uf-email" name="email" type="email" required></label>`}
+    <label class="field"><span>Role</span><select id="uf-role" name="role"><option value="user" ${u.role !== "admin" ? "selected" : ""}>Team user</option><option value="admin" ${u.role === "admin" ? "selected" : ""}>Administrator</option></select></label>
+    ${u.id ? `<label class="field full" style="display:flex;gap:8px;align-items:center"><input id="uf-act" name="active" type="checkbox" ${u.active !== false ? "checked" : ""} ${u.id === S.me.id ? "disabled" : ""}> Can sign in</label>`
+      : `<label class="field"><span>Starting password</span><input id="uf-pw" name="pw" type="password" required minlength="8" autocomplete="new-password"><small>At least 8 characters. They can change it under My account.</small></label>
+         <label class="field"><span>Confirm password</span><input id="uf-pw2" name="pw2" type="password" required autocomplete="new-password"></label>`}
+    <p class="note full" style="margin:0">Administrators can add and disable users, correct amounts and delete records. Team users capture customers, handovers, documents and payments.</p>
+  </div><div class="err"></div></div>
+  <div class="modal-foot"><button class="btn" type="button" data-act="closeModal">Cancel</button><button class="btn primary" type="submit">${u.id ? "Save" : "Add user"}</button></div></form>`;
+}
+function confirmBox(text, label, act, attrs) {
+  return `<div class="modal-body"><p style="margin:0">${text}</p><div class="err"></div></div>
+  <div class="modal-foot"><button class="btn" type="button" data-act="closeModal">Cancel</button><button class="btn danger" data-act="${act}" ${attrs}>${label}</button></div>`;
+}
+
+/* ---------- exports ---------- */
+function saveFile(filename, blob) {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = filename;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+  toast("Downloaded " + filename);
+}
+function fileStem() { const e = S.entity === "ALL" ? "Corcomm" : ENT[S.entity].name.replace(/ /g, "-"); return `${e}_Blacklist_${S.rep.from}_to_${S.rep.to}`; }
+
+function exportXlsx() {
+  if (!window.XLSX) { toast("The Excel tool didn't load. Reload the page and try again.", "bad"); return; }
+  const R = buildReport(), wb = XLSX.utils.book_new(), title = S.entity === "ALL" ? "Corcomm Elektronies & Corcomm Sekuriteit" : ENT[S.entity].name;
+  const fmt = (ws, cols, from) => { const rg = XLSX.utils.decode_range(ws["!ref"]); for (let r = from; r <= rg.e.r; r++) cols.forEach(([c, z]) => { const a = XLSX.utils.encode_cell({ r, c }); if (ws[a] && typeof ws[a].v === "number") ws[a].z = z; }); };
+  const mz = "#,##0.00", pz = "0.0%";
+  const sum = [["Corcomm Blacklist – Progress & movement report"], [title], [`Period: ${fmtDate(R.from)} to ${fmtDate(R.to)}`], [`Attorney: ${R.attorney === "ALL" ? "Both" : R.attorney}`], [`Generated ${fmtDate(nowISO())} ${fmtTime(nowISO())} by ${S.me.name}`], [],
+    ["Company", "Customers", "Opening balance", "Handed over", "Recovered", "Closing balance", "Recovered to date %"]];
+  R.codes.forEach(c => { const t = R.ents[c].tot; sum.push([ENT[c].name, R.ents[c].rows.length, t.open, t.handed, t.rec, t.close, t.toDate ? t.recToDate / t.toDate : 0]); });
+  sum.push([], ["Attorney", "", "", "Handed over", "Recovered", "Outstanding"]);
+  ATT.filter(a => R.attorney === "ALL" || a === R.attorney).forEach(a => { const v = R.byAtt[a]; sum.push([a, "", "", v.handed, v.rec, v.close]); });
+  const ws0 = XLSX.utils.aoa_to_sheet(sum); ws0["!cols"] = [{ wch: 26 }, { wch: 11 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 16 }, { wch: 18 }];
+  fmt(ws0, [[2, mz], [3, mz], [4, mz], [5, mz], [6, pz]], 7);
+  XLSX.utils.book_append_sheet(wb, ws0, "Summary");
+  R.codes.forEach(c => {
+    const e = R.ents[c], rows = [["Customer", "Account no", "ID / Reg no", "Attorney", "Opening balance", "Handed over", "Recovered", "Attorney fees", "Closing balance", "Total handed over", "Total recovered", "Recovered %", "Last movement", "Status"]];
+    e.rows.forEach(r => rows.push([r.c.name, r.c.accountNo || "", r.c.regNo || "", r.atts, r.open, r.handed, r.rec, r.fees, r.close, r.toDate, r.recToDate, r.pct / 100, fmtDate(r.last), r.status]));
+    rows.push(["Total", "", "", "", e.tot.open, e.tot.handed, e.tot.rec, e.tot.fees, e.tot.close, e.tot.toDate, e.tot.recToDate, e.tot.toDate ? e.tot.recToDate / e.tot.toDate : 0, "", ""]);
+    const ws = XLSX.utils.aoa_to_sheet(rows); ws["!cols"] = [{ wch: 30 }, { wch: 13 }, { wch: 16 }, { wch: 20 }, ...Array(7).fill({ wch: 15 }), { wch: 12 }, { wch: 14 }, { wch: 10 }];
+    fmt(ws, [[4, mz], [5, mz], [6, mz], [7, mz], [8, mz], [9, mz], [10, mz], [11, pz]], 1);
+    XLSX.utils.book_append_sheet(wb, ws, ENT[c].short);
+  });
+  const mv = [["Date", "Company", "Customer", "Account no", "Movement", "Attorney", "Attorney ref", "Reference", "Handed over", "Recovered (credited)", "Paid over (net)", "Attorney fees"]];
+  R.movements.forEach(x => mv.push([fmtDate(x.date), ENT[x.code].short, x.cust.name, x.cust.accountNo || "", x.type, x.att || "", x.attRef || "", x.ref || "", x.debit || null, x.credit || null, x.net || null, x.fees || null]));
+  const wsm = XLSX.utils.aoa_to_sheet(mv); wsm["!cols"] = [{ wch: 12 }, { wch: 12 }, { wch: 28 }, { wch: 13 }, { wch: 17 }, { wch: 18 }, { wch: 14 }, { wch: 18 }, { wch: 14 }, { wch: 18 }, { wch: 15 }, { wch: 13 }];
+  fmt(wsm, [[8, mz], [9, mz], [10, mz], [11, mz]], 1);
+  XLSX.utils.book_append_sheet(wb, wsm, "Movements");
+  const buf = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+  saveFile(fileStem() + ".xlsx", new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
+}
+
+function exportPdf() {
+  if (!window.jspdf?.jsPDF) { toast("The PDF tool didn't load. Reload the page and try again.", "bad"); return; }
+  const R = buildReport(), pdf = new window.jspdf.jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+  if (typeof pdf.autoTable !== "function") { toast("The PDF tool didn't load. Reload the page and try again.", "bad"); return; }
+  const mp = n => money(n, " "), W = pdf.internal.pageSize.getWidth();
+  const OX = [122, 31, 43], CE = [27, 106, 136], CS = [154, 95, 14], INK = [20, 32, 43], MUT = [90, 103, 116];
+  const title = S.entity === "ALL" ? "Corcomm Elektronies & Corcomm Sekuriteit" : ENT[S.entity].name;
+  pdf.setDrawColor(...OX); pdf.setLineWidth(0.6); pdf.setTextColor(...OX); pdf.setFont("helvetica", "bold"); pdf.setFontSize(9);
+  pdf.rect(14, 12, 26, 7); pdf.text("CORCOMM", 27, 16.8, { align: "center" });
+  pdf.setTextColor(...INK); pdf.setFontSize(18); pdf.text("Blacklist – Progress & movement report", 44, 17.5);
+  pdf.setFont("helvetica", "normal"); pdf.setFontSize(10); pdf.setTextColor(...MUT);
+  pdf.text(`${title}  ·  ${fmtDate(R.from)} to ${fmtDate(R.to)}  ·  Attorney: ${R.attorney === "ALL" ? "Both" : R.attorney}`, 14, 26);
+  pdf.text(`Generated ${fmtDate(nowISO())} ${fmtTime(nowISO())} by ${S.me.name}`, W - 14, 26, { align: "right" });
+  const base = { theme: "grid", styles: { fontSize: 8, cellPadding: 1.8, textColor: INK, lineColor: [211, 218, 225], lineWidth: 0.1 }, headStyles: { fillColor: [233, 237, 241], textColor: INK, fontStyle: "bold" }, footStyles: { fillColor: [233, 237, 241], textColor: INK, fontStyle: "bold" }, margin: { left: 14, right: 14 } };
+  const right = cols => Object.fromEntries(cols.map(c => [c, { halign: "right" }]));
+  pdf.autoTable({ ...base, startY: 31, head: [["Company", "Customers", "Opening", "Handed over", "Recovered", "Closing balance", "Recovered to date"]],
+    body: R.codes.map(c => { const t = R.ents[c].tot; return [ENT[c].name, R.ents[c].rows.length, mp(t.open), mp(t.handed), mp(t.rec), mp(t.close), pct(t.recToDate, t.toDate).toFixed(1) + "%"]; }),
+    columnStyles: right([1, 2, 3, 4, 5, 6]) });
+  pdf.autoTable({ ...base, startY: pdf.lastAutoTable.finalY + 4, head: [["Attorney", "Handed over", "Recovered", "Outstanding"]],
+    body: ATT.filter(a => R.attorney === "ALL" || a === R.attorney).map(a => [a, mp(R.byAtt[a].handed), mp(R.byAtt[a].rec), mp(R.byAtt[a].close)]), columnStyles: right([1, 2, 3]), tableWidth: 150 });
+  R.codes.forEach(c => {
+    const e = R.ents[c]; let y = pdf.lastAutoTable.finalY + 9; if (y > 175) { pdf.addPage(); y = 18; }
+    pdf.setFont("helvetica", "bold"); pdf.setFontSize(12); pdf.setTextColor(...(c === "CE" ? CE : CS)); pdf.text(ENT[c].name + " – customers", 14, y);
+    pdf.autoTable({ ...base, startY: y + 3, headStyles: { ...base.headStyles, fillColor: c === "CE" ? [225, 239, 245] : [246, 236, 220] },
+      head: [["Customer", "Account no", "Attorney", "Opening", "Handed over", "Recovered", "Closing", "Recovered %", "Last movement", "Status"]],
+      body: e.rows.length ? e.rows.map(r => [r.c.name, r.c.accountNo || "", r.atts, mp(r.open), mp(r.handed), mp(r.rec), mp(r.close), r.pct.toFixed(0) + "%", fmtDate(r.last), r.status]) : [[{ content: "No customers with movement or a balance in this period.", colSpan: 10 }]],
+      foot: [["Total", "", "", mp(e.tot.open), mp(e.tot.handed), mp(e.tot.rec), mp(e.tot.close), pct(e.tot.recToDate, e.tot.toDate).toFixed(0) + "%", "", ""]],
+      columnStyles: right([3, 4, 5, 6, 7]) });
+  });
+  let y = pdf.lastAutoTable.finalY + 9; if (y > 175) { pdf.addPage(); y = 18; }
+  pdf.setFont("helvetica", "bold"); pdf.setFontSize(12); pdf.setTextColor(...INK); pdf.text("Movement in period", 14, y);
+  pdf.autoTable({ ...base, startY: y + 3, head: [["Date", "Company", "Customer", "Movement", "Attorney", "Reference", "Handed over", "Recovered", "Attorney fees"]],
+    body: R.movements.length ? R.movements.map(x => [fmtDate(x.date), ENT[x.code].short, x.cust.name, x.type, x.att || "", x.ref || "", x.debit ? mp(x.debit) : "", x.credit ? mp(x.credit) : "", x.fees ? mp(x.fees) : ""]) : [[{ content: "No handovers or payments in this period.", colSpan: 9 }]],
+    foot: [["Total", "", "", "", "", "", mp(R.movements.reduce((a, x) => a + x.debit, 0)), mp(R.movements.reduce((a, x) => a + x.credit, 0)), mp(R.movements.reduce((a, x) => a + x.fees, 0))]],
+    columnStyles: right([6, 7, 8]) });
+  const n = pdf.internal.getNumberOfPages();
+  for (let i = 1; i <= n; i++) { pdf.setPage(i); pdf.setFont("helvetica", "normal"); pdf.setFontSize(8); pdf.setTextColor(...MUT); pdf.text("Corcomm Blacklist · Confidential", 14, 203); pdf.text(`Page ${i} of ${n}`, W - 14, 203, { align: "right" }); }
+  saveFile(fileStem() + ".pdf", pdf.output("blob"));
+}
+
+/* ---------- actions ---------- */
+const ACT = {
+  scrim(el, e) { if (e.target === el) closeModal(); },
+  closeModal,
+  reload() { location.reload(); },
+  logout() { signOut(auth); },
+  forgot() {
+    openModal("Reset your password", `<form data-form="forgot"><div class="modal-body"><p style="margin:0">Enter the email address you sign in with. We'll email you a link to choose a new password.</p>
+      <label class="field"><span>Email address</span><input id="fg-email" name="email" type="email" required></label><div class="err"></div></div>
+      <div class="modal-foot"><button class="btn" type="button" data-act="closeModal">Cancel</button><button class="btn primary" type="submit">Send reset link</button></div></form>`);
+  },
+  nav(el) { S.view = el.dataset.view; S.custId = null; render(); window.scrollTo(0, 0); },
+  entity(el) { S.entity = el.dataset.ent; try { localStorage.setItem("cbl_entity", S.entity); } catch {} render(); },
+  custFilter(el) { S.custFilter = el.dataset.v; render(); },
+  openCust(el, e) { e.preventDefault(); closeModal(); S.custId = el.dataset.id; S.view = "customer"; render(); window.scrollTo(0, 0); },
+  newCustomer() { openModal("Add customer", customerForm()); },
+  editCustomer(el) { openModal("Edit customer", customerForm(model().custById[el.dataset.id])); },
+  delCustomer(el) { const c = model().custById[el.dataset.id]; openModal("Delete customer", confirmBox(`Delete <b>${esc(c.name)}</b>? This can't be undone.`, "Delete customer", "doDelCustomer", `data-id="${c.id}"`)); },
+  async doDelCustomer(el) { const c = model().custById[el.dataset.id]; try { await remove("customers", c.id); await log("customer.delete", `Deleted customer ${c.name}`); closeModal(); S.view = "customers"; render(); toast("Customer deleted"); } catch (e) { formErr(el.closest(".modal"), writeFailed(e)); } },
+  newTx(el) { openModal("New handover to attorney", txForm(el.dataset.cust)); },
+  editTx(el) { openModal("Update handover", txEditForm(model().txById[el.dataset.id])); },
+  delTx(el) { const t = model().txById[el.dataset.id]; openModal("Delete handover", confirmBox(`Delete the handover <b>${esc(t.reference || "")}</b> of ${money(t.amount)}? Its documents are removed too. This can't be undone.`, "Delete handover", "doDelTx", `data-id="${t.id}"`)); },
+  async doDelTx(el) {
+    const m = model(), t = m.txById[el.dataset.id], c = m.custById[t.customerId];
+    try { await remove("transactions", t.id); for (const d of t.docs || []) { try { await deleteObject(sref(storage, d.path)); } catch {} }
+      await log("tx.delete", `Deleted handover ${t.reference || ""} (${money(t.amount)}) for ${c?.name}`, { customerId: t.customerId }); closeModal(); toast("Handover deleted"); }
+    catch (e) { formErr(el.closest(".modal"), writeFailed(e)); }
+  },
+  async openDoc(el) {
+    const t = model().txById[el.dataset.tx], d = (t?.docs || [])[+el.dataset.i]; if (!d) return;
+    const w = window.open("", "_blank");
+    try { const url = await getDownloadURL(sref(storage, d.path)); if (w) w.location.href = url; else location.href = url; }
+    catch (e) { if (w) w.close(); console.error(e); toast(e?.code === "storage/object-not-found" ? "That document is no longer in storage." : "The document couldn't be opened.", "bad"); }
+  },
+  delDoc(el) { const t = model().txById[el.dataset.tx], d = (t.docs || [])[+el.dataset.i]; openModal("Remove document", confirmBox(`Remove <b>${esc(d.name)}</b> from this handover? The file is deleted.`, "Remove document", "doDelDoc", `data-tx="${t.id}" data-i="${el.dataset.i}"`)); },
+  async doDelDoc(el) {
+    const t = model().txById[el.dataset.tx], i = +el.dataset.i, d = t.docs[i];
+    try { await patch("transactions", t.id, { docs: t.docs.filter((_, j) => j !== i) }); try { await deleteObject(sref(storage, d.path)); } catch {}
+      await log("doc.delete", `Removed document ${d.name} from ${t.reference || "handover"}`, { customerId: t.customerId }); closeModal(); toast("Document removed"); }
+    catch (e) { formErr(el.closest(".modal"), writeFailed(e)); }
+  },
+  newPayment(el) {
+    openModal("Record payment from attorney", payForm(el.dataset.cust || "", el.dataset.tx || ""), mod => {
+      const f = mod.querySelector("form"), E = f.elements, upd = () => { mod.querySelector("#pf-credit").textContent = money((+E.amount.value || 0) + (+E.fees.value || 0)); };
+      E.amount.addEventListener("input", upd); E.fees.addEventListener("input", upd);
+      E.customerId.addEventListener("change", () => { E.transactionId.innerHTML = matterOptions(E.customerId.value); });
+    });
+  },
+  delPay(el) { const p = S.pays.find(x => x.id === el.dataset.id); openModal("Delete payment", confirmBox(`Delete the payment of ${money(credit(p))} received ${fmtDate(p.dateReceived)}? The customer's balance goes back up. This can't be undone.`, "Delete payment", "doDelPay", `data-id="${p.id}"`)); },
+  async doDelPay(el) {
+    const p = S.pays.find(x => x.id === el.dataset.id), c = model().custById[p.customerId];
+    try { await remove("payments", p.id); await log("pay.delete", `Deleted payment of ${money(credit(p))} (${fmtDate(p.dateReceived)}) for ${c?.name}`, { customerId: p.customerId }); closeModal(); toast("Payment deleted"); }
+    catch (e) { formErr(el.closest(".modal"), writeFailed(e)); }
+  },
+  repPreset(el) {
+    const d = new Date(), p = el.dataset.p;
+    if (p === "month") S.rep.from = localYMD(new Date(d.getFullYear(), d.getMonth(), 1));
+    if (p === "year") S.rep.from = d.getFullYear() + "-01-01";
+    if (p === "all") S.rep.from = "2000-01-01";
+    S.rep.to = localYMD(); render();
+  },
+  exportPdf() { try { exportPdf(); } catch (e) { console.error(e); toast("The PDF couldn't be built.", "bad"); } },
+  exportXlsx() { try { exportXlsx(); } catch (e) { console.error(e); toast("The Excel file couldn't be built.", "bad"); } },
+  newUser() { openModal("Add team user", userForm()); },
+  editUser(el) { openModal("Edit team user", userForm(S.users.find(u => u.id === el.dataset.id))); },
+  async resetPw(el) {
+    const u = S.users.find(x => x.id === el.dataset.id);
+    try { await sendPasswordResetEmail(auth, u.email); await log("user.reset", `Sent a password reset email to ${u.name}`); toast(`Reset link emailed to ${u.email}`); }
+    catch (e) { toast(authErr(e), "bad"); }
+  },
+};
+
+/* ---------- forms ---------- */
+const val = (f, n) => (f.elements[n]?.value ?? "").trim();
+let secondary = null;
+const FORM = {
+  async setup(f) {
+    const name = val(f, "name"), email = val(f, "email"), pw = f.elements.pw.value;
+    if (pw.length < 8) return formErr(f, "Use at least 8 characters for the password.");
+    if (pw !== f.elements.pw2.value) return formErr(f, "The two passwords don't match.");
+    busy(f, true); S.settingUp = true;
+    try {
+      const cred = await createUserWithEmailAndPassword(auth, email, pw);
+      const uid = cred.user.uid, b = writeBatch(db);
+      b.set(doc(db, "users", uid), { name, email, role: "admin", active: true, createdAt: serverTimestamp(), createdBy: uid });
+      b.set(doc(db, "meta", "setup"), { done: true, at: serverTimestamp(), by: uid });
+      await b.commit();
+      S.settingUp = false;
+      await loadMe(cred.user);
+      await log("user.create", `Set up first administrator ${name}`);
+    } catch (e) {
+      S.settingUp = false; busy(f, false);
+      formErr(f, e?.code === "permission-denied" ? "Setup has already been done. Sign in instead." : (e?.code?.startsWith("auth/") ? authErr(e) : writeFailed(e)));
+      if (auth.currentUser && !S.me) signOut(auth);
+    }
+  },
+  async login(f) {
+    busy(f, true); S.authMsg = "";
+    try { await signInWithEmailAndPassword(auth, val(f, "email"), f.elements.pw.value); }
+    catch (e) { busy(f, false); formErr(f, authErr(e)); }
+  },
+  async forgot(f) {
+    busy(f, true);
+    try { await sendPasswordResetEmail(auth, val(f, "email")); } catch (e) { if (!String(e?.code).includes("user-not-found") && !String(e?.code).includes("invalid-email")) { busy(f, false); return formErr(f, authErr(e)); } }
+    closeModal(); toast("If that email has a login, a reset link is on its way. Check spam too.");
+  },
+  async customer(f) {
+    const id = f.dataset.id, old = id ? model().custById[id] : null;
+    const entity = f.querySelector("input[name=entity]:checked")?.value || old?.entity;
+    if (!entity) return formErr(f, "Choose Corcomm Elektronies or Corcomm Sekuriteit.");
+    const data = { name: val(f, "name"), entity, accountNo: val(f, "accountNo"), regNo: val(f, "regNo"), contactPerson: val(f, "contactPerson"), phone: val(f, "phone"), email: val(f, "email"), address: val(f, "address"), notes: val(f, "notes") };
+    if (!data.name) return formErr(f, "Enter the customer's name.");
+    busy(f, true);
+    try {
+      if (old) { await patch("customers", id, data); await log("customer.update", `Updated customer ${data.name}${old.entity !== entity ? ` (moved to ${ENT[entity].short})` : ""}`, { customerId: id }); closeModal(); toast("Customer saved"); }
+      else { const nid = await put("customers", null, { ...data, createdAt: serverTimestamp(), createdBy: S.me.id, createdByName: S.me.name }); await log("customer.create", `Added customer ${data.name} (${ENT[entity].short})`, { customerId: nid });
+        closeModal(); S.custId = nid; S.view = "customer"; render(); toast("Customer added. Capture the handover next."); }
+    } catch (e) { formErr(f, writeFailed(e)); busy(f, false); }
+  },
+  async tx(f) {
+    const E = f.elements, customerId = E.customerId.value, amount = round2(E.amount.value), attorney = E.attorney.value, submittedDate = E.submittedDate.value;
+    if (!customerId) return formErr(f, "Choose the customer.");
+    if (!(amount > 0)) return formErr(f, "Enter the amount handed over.");
+    if (!ATT.includes(attorney)) return formErr(f, "Choose the attorney.");
+    if (!submittedDate || submittedDate > localYMD()) return formErr(f, "Enter the date it was submitted to the attorney (not in the future).");
+    busy(f, true);
+    const r = doc(collection(db, "transactions"));
+    let docs = [];
+    try { const files = E.files?.files ? [...E.files.files] : []; if (files.length) { formErr(f, `Uploading ${files.length} document${files.length > 1 ? "s" : ""}…`); docs = await uploadFiles(files, r.id); formErr(f, ""); } }
+    catch (e) { formErr(f, uploadErr(e)); busy(f, false); return; }
+    try {
+      const c = model().custById[customerId];
+      await setDoc(r, { customerId, txDate: serverTimestamp(), amount, attorney, submittedDate, attorneyRef: val(f, "attorneyRef"), reference: val(f, "reference"), description: val(f, "description"), notes: val(f, "notes"), status: "Handed over", docs, createdBy: S.me.id, createdByName: S.me.name });
+      await log("tx.create", `Handed over ${money(amount)}${val(f, "reference") ? " (" + val(f, "reference") + ")" : ""} for ${c?.name} to ${attorney}${docs.length ? `, ${docs.length} document${docs.length > 1 ? "s" : ""}` : ""}`, { customerId, transactionId: r.id });
+      closeModal(); if (S.view !== "customer") { S.custId = customerId; S.view = "customer"; render(); } toast("Handover captured");
+    } catch (e) { formErr(f, writeFailed(e)); busy(f, false); }
+  },
+  async txEdit(f) {
+    const E = f.elements, t = model().txById[f.dataset.id], c = model().custById[t.customerId];
+    const data = { status: E.status.value, attorney: E.attorney.value, submittedDate: E.submittedDate.value, attorneyRef: val(f, "attorneyRef"), reference: val(f, "reference"), description: val(f, "description"), notes: val(f, "notes") };
+    if (isAdmin() && E.amount) { const a = round2(E.amount.value); if (!(a > 0)) return formErr(f, "Enter a valid amount."); data.amount = a; }
+    if (!data.submittedDate || data.submittedDate > localYMD()) return formErr(f, "The submitted date can't be empty or in the future.");
+    const changes = [];
+    [["status", "status"], ["attorney", "attorney"], ["submittedDate", "submitted date"], ["attorneyRef", "attorney ref"], ["reference", "reference"], ["amount", "amount"]].forEach(([k, l]) => {
+      if (k in data && String(data[k] ?? "") !== String(t[k] ?? "")) changes.push(`${l} ${k === "amount" ? money(t[k]) + " → " + money(data[k]) : (t[k] || "—") + " → " + (data[k] || "—")}`);
+    });
+    busy(f, true);
+    try { await patch("transactions", t.id, { ...data, updatedAt: serverTimestamp(), updatedBy: S.me.id });
+      if (changes.length || data.notes !== (t.notes || "") || data.description !== (t.description || "")) await log("tx.update", `Updated handover ${t.reference || ""} for ${c?.name}${changes.length ? ": " + changes.join("; ") : ""}`, { customerId: t.customerId, transactionId: t.id });
+      closeModal(); toast("Handover updated"); }
+    catch (e) { formErr(f, writeFailed(e)); busy(f, false); }
+  },
+  async pay(f) {
+    const E = f.elements, m = model(), customerId = E.customerId.value, transactionId = E.transactionId.value;
+    const amount = round2(E.amount.value), fees = round2(E.fees.value || 0), dateReceived = E.dateReceived.value;
+    if (!customerId || !transactionId) return formErr(f, "Choose the customer and handover.");
+    if (amount < 0 || fees < 0) return formErr(f, "Amounts can't be negative.");
+    if (!(amount + fees > 0)) return formErr(f, "Enter the amount paid over.");
+    if (!dateReceived || dateReceived > localYMD()) return formErr(f, "Enter the date received (not in the future).");
+    const t = m.txById[transactionId], c = m.custById[customerId], cr = round2(amount + fees);
+    busy(f, true);
+    try {
+      await put("payments", null, { customerId, transactionId, dateReceived, amount, fees, reference: val(f, "reference"), notes: val(f, "notes"), createdAt: serverTimestamp(), createdBy: S.me.id, createdByName: S.me.name });
+      const newBal = round2(m.txStats[t.id].balance - cr);
+      if (newBal <= 0.004 && !CLOSED.includes(t.status)) await patch("transactions", t.id, { status: "Paid in full" });
+      else if (t.status === "Handed over" || t.status === "Letter of demand") await patch("transactions", t.id, { status: "Paying (arrangement)" });
+      await log("pay.create", `Received ${money(cr)} from ${t.attorney} for ${c?.name} (${t.reference || "handover"})${fees ? `, incl. ${money(fees)} attorney fees` : ""}`, { customerId, transactionId });
+      closeModal(); toast(newBal <= 0.004 ? "Payment recorded. This handover is now paid in full." : "Payment recorded. Balance " + money(newBal));
+    } catch (e) { formErr(f, writeFailed(e)); busy(f, false); }
+  },
+  async user(f) {
+    const E = f.elements, id = f.dataset.id, name = val(f, "name"), role = E.role.value;
+    if (!name) return formErr(f, "Enter the person's name.");
+    const admins = S.users.filter(u => u.role === "admin" && u.active !== false);
+    busy(f, true);
+    try {
+      if (id) {
+        const u = S.users.find(x => x.id === id), active = E.active ? (E.active.checked || id === S.me.id) : true;
+        if (u.role === "admin" && (role !== "admin" || !active) && admins.length <= 1) { busy(f, false); return formErr(f, "Keep at least one active administrator."); }
+        await patch("users", id, { name, role, active });
+        await log("user.update", `Updated team user ${name} (${role === "admin" ? "administrator" : "team user"}${active ? "" : ", disabled"})`);
+        closeModal(); toast("User saved");
+      } else {
+        const email = val(f, "email"), pw = E.pw.value;
+        if (pw.length < 8) { busy(f, false); return formErr(f, "Use at least 8 characters for the password."); }
+        if (pw !== E.pw2.value) { busy(f, false); return formErr(f, "The two passwords don't match."); }
+        if (S.users.some(u => (u.email || "").toLowerCase() === email.toLowerCase())) { busy(f, false); return formErr(f, "That email address is already on the team list."); }
+        secondary ||= initializeApp(CFG, "user-admin");
+        const sa = getAuth(secondary);
+        const cred = await createUserWithEmailAndPassword(sa, email, pw);
+        await signOut(sa);
+        await setDoc(doc(db, "users", cred.user.uid), { name, email, role, active: true, createdAt: serverTimestamp(), createdBy: S.me.id });
+        await log("user.create", `Added team user ${name} (${role === "admin" ? "administrator" : "team user"})`);
+        closeModal(); toast("User added. Give them their email and starting password.");
+      }
+    } catch (e) { busy(f, false); formErr(f, e?.code?.startsWith("auth/") ? authErr(e) : writeFailed(e)); }
+  },
+  async myPw(f) {
+    const E = f.elements;
+    if (E.pw.value.length < 8) return formErr(f, "Use at least 8 characters.");
+    if (E.pw.value !== E.pw2.value) return formErr(f, "The two new passwords don't match.");
+    busy(f, true);
+    try {
+      await reauthenticateWithCredential(auth.currentUser, EmailAuthProvider.credential(auth.currentUser.email, E.cur.value));
+      await updatePassword(auth.currentUser, E.pw.value);
+      await log("user.password", `${S.me.name} changed their password`);
+      f.reset(); busy(f, false); toast("Password changed");
+    } catch (e) { busy(f, false); formErr(f, String(e?.code).match(/credential|wrong-password/) ? "Your current password is incorrect." : authErr(e)); }
+  },
+};
+
+/* ---------- events ---------- */
+document.addEventListener("click", e => { const a = e.target.closest("[data-act]"); if (!a || a.disabled) return; const fn = ACT[a.dataset.act]; if (fn) fn(a, e); });
+document.addEventListener("submit", e => { const f = e.target; if (f.dataset.form) { e.preventDefault(); formErr(f, ""); FORM[f.dataset.form]?.(f); } });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && document.getElementById("modal-root").innerHTML) closeModal(); });
+document.addEventListener("input", e => { const k = e.target.dataset.input; if (k) { S[k] = e.target.value; render(); } });
+document.addEventListener("change", async e => {
+  const t = e.target;
+  if (t.dataset.rep) { S.rep[t.dataset.rep] = t.type === "checkbox" ? t.checked : t.value; if (S.rep.from > S.rep.to) S.rep.to = S.rep.from; render(); return; }
+  if (t.dataset.upload) {
+    const tx = model().txById[t.dataset.upload], files = [...t.files]; if (!files.length) return;
+    toast(`Uploading ${files.length} document${files.length > 1 ? "s" : ""}…`);
+    try { const docs = await uploadFiles(files, tx.id); const cur = model().txById[tx.id]?.docs || [];
+      await patch("transactions", tx.id, { docs: [...cur, ...docs] });
+      await log("doc.add", `Added ${docs.length} document${docs.length > 1 ? "s" : ""} to ${tx.reference || "handover"} for ${model().custById[tx.customerId]?.name}`, { customerId: tx.customerId, transactionId: tx.id });
+      toast("Documents added"); }
+    catch (err) { toast(err?.code === "permission-denied" ? writeFailed(err) : uploadErr(err), "bad"); }
+  }
+});
+
+/* ---------- live data ---------- */
+let unsubs = [];
+function stopSubs() { unsubs.forEach(u => u()); unsubs = []; Object.keys(S.loaded).forEach(k => S.loaded[k] = false); S.users = []; S.customers = []; S.txs = []; S.pays = []; S.activity = []; S.ver++; }
+function subscribe(key, loadedKey, q) {
+  unsubs.push(onSnapshot(q, snap => {
+    S[key] = snap.docs.map(conv);
+    if (loadedKey) S.loaded[loadedKey] = true;
+    if (key === "users" && S.me) {
+      const me = S.users.find(u => u.id === S.me.id);
+      if (!me || me.active === false) { S.authMsg = "Your login has been disabled. Ask an administrator."; signOut(auth); return; }
+      S.me = me;
+    }
+    S.ver++; render();
+  }, err => {
+    console.error(key, err);
+    if (err.code === "permission-denied") { S.authMsg = "Your access was removed or has been disabled. Ask an administrator."; signOut(auth); }
+    else { S.err = "The records couldn't be loaded. Check your connection and reload."; S.phase = "error"; render(); }
+  }));
+}
+function startSubs() {
+  subscribe("users", "users", collection(db, "users"));
+  subscribe("customers", "customers", collection(db, "customers"));
+  subscribe("txs", "transactions", collection(db, "transactions"));
+  subscribe("pays", "payments", collection(db, "payments"));
+  subscribe("activity", null, query(collection(db, "activity"), orderBy("at", "desc"), limit(300)));
+}
+async function loadMe(user) {
+  try {
+    const snap = await getDoc(doc(db, "users", user.uid));
+    const d = snap.exists() ? snap.data() : null;
+    if (!d || d.active !== true) {
+      S.authMsg = d ? "Your login has been disabled. Ask an administrator." : "This login doesn't have access to Corcomm Blacklist. Ask an administrator to add you.";
+      await signOut(auth); return;
+    }
+    S.me = { id: user.uid, ...d, email: d.email || user.email };
+    S.phase = "app"; S.view = "overview"; S.authMsg = "";
+    startSubs(); render();
+  } catch (e) {
+    console.error(e); S.authMsg = "Your access couldn't be checked. Try signing in again."; await signOut(auth);
+  }
+}
+async function boot() {
+  if (!configured) { S.phase = "config"; render(); return; }
+  try { await setPersistence(auth, browserSessionPersistence); } catch {}
+  onAuthStateChanged(auth, async user => {
+    if (S.settingUp) return;
+    stopSubs(); S.me = null; closeModal();
+    if (user) { S.phase = "loading"; render(); await loadMe(user); return; }
+    try { const s = await getDoc(doc(db, "meta", "setup")); S.phase = s.exists() ? "login" : "setup"; }
+    catch (e) { console.error(e); S.phase = "login"; if (!S.authMsg) S.authMsg = e?.code === "permission-denied" ? "Firebase security rules aren't published yet (setup guide, step 4)." : ""; }
+    render();
+  });
+}
+render();
+boot();
+
+</script>
+</body>
+</html>

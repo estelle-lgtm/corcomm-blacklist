@@ -1,0 +1,28 @@
+rules_version = '2';
+// Corcomm Blacklist – Storage security rules (documents submitted to the attorneys).
+// Paste this whole file into Firebase console → Storage → Rules, then click Publish.
+// When Firebase asks to let Storage rules read Firestore, click Allow / Grant.
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function userDoc() {
+      return firestore.get(/databases/(default)/documents/users/$(request.auth.uid));
+    }
+    function isUser() {
+      return request.auth != null
+        && firestore.exists(/databases/(default)/documents/users/$(request.auth.uid))
+        && userDoc().data.active == true;
+    }
+    function isAdmin() { return isUser() && userDoc().data.role == 'admin'; }
+
+    match /documents/{txId}/{fileName} {
+      allow read: if isUser();
+      allow create: if isUser()
+        && request.resource.size < 20 * 1024 * 1024
+        && (request.resource.contentType == 'application/pdf'
+            || request.resource.contentType.matches('image/(jpeg|png|webp)'));
+      allow update: if false;
+      allow delete: if isAdmin();
+    }
+  }
+}

@@ -1,0 +1,83 @@
+rules_version = '2';
+// Corcomm Blacklist – Firestore security rules.
+// Paste this whole file into Firebase console → Firestore Database → Rules, then click Publish.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() { return request.auth != null; }
+    function userPath() { return /databases/$(database)/documents/users/$(request.auth.uid); }
+    function isUser() {
+      return signedIn() && exists(userPath()) && get(userPath()).data.active == true;
+    }
+    function isAdmin() { return isUser() && get(userPath()).data.role == 'admin'; }
+    function setupDone() { return exists(/databases/$(database)/documents/meta/setup); }
+    function attorneyOk() { return request.resource.data.attorney in ['Sadler Inc', 'Du Randt & Louw']; }
+    function changed() { return request.resource.data.diff(resource.data).affectedKeys(); }
+
+    // Marks that the first administrator has been created.
+    match /meta/setup {
+      allow read: if true;
+      allow create: if signedIn() && !setupDone()
+        && existsAfter(/databases/$(database)/documents/users/$(request.auth.uid));
+      allow update, delete: if false;
+    }
+
+    // Team users. Only administrators add or change them.
+    match /users/{uid} {
+      allow read: if isUser() || (signedIn() && request.auth.uid == uid);
+      allow create: if isAdmin()
+        || (signedIn() && request.auth.uid == uid && !setupDone()
+            && existsAfter(/databases/$(database)/documents/meta/setup)
+            && request.resource.data.role == 'admin'
+            && request.resource.data.active == true);
+      allow update: if isAdmin();
+      allow delete: if false;
+    }
+
+    match /customers/{id} {
+      allow read: if isUser();
+      allow create: if isUser() && request.resource.data.createdBy == request.auth.uid;
+      allow update: if isUser()
+        && request.resource.data.createdBy == resource.data.createdBy
+        && (isAdmin() || request.resource.data.entity == resource.data.entity);
+      allow delete: if isAdmin();
+    }
+
+    // Handovers to the attorneys. The transaction date is set by the server
+    // when the handover is captured and can never be changed afterwards.
+    match /transactions/{id} {
+      allow read: if isUser();
+      allow create: if isUser()
+        && request.resource.data.txDate == request.time
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.amount is number
+        && request.resource.data.amount > 0
+        && attorneyOk();
+      allow update: if isUser()
+        && changed().hasOnly(['status', 'attorney', 'submittedDate', 'attorneyRef', 'reference',
+                              'description', 'notes', 'docs', 'amount', 'updatedAt', 'updatedBy'])
+        && (isAdmin() || !changed().hasAny(['amount']))
+        && attorneyOk();
+      allow delete: if isAdmin();
+    }
+
+    // Payments received from the attorneys. Can't be edited; an administrator can delete a wrong one.
+    match /payments/{id} {
+      allow read: if isUser();
+      allow create: if isUser()
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.createdBy == request.auth.uid;
+      allow update: if false;
+      allow delete: if isAdmin();
+    }
+
+    // Activity log. Write-once: nobody can edit or delete entries.
+    match /activity/{id} {
+      allow read: if isUser();
+      allow create: if isUser()
+        && request.resource.data.by == request.auth.uid
+        && request.resource.data.at == request.time;
+      allow update, delete: if false;
+    }
+  }
+}
